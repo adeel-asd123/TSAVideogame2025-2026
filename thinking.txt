@@ -1,0 +1,21 @@
+okay so the problem witht the AI system before is thaty it was very bulky, alot of lists, im wondering if i 
+could just use intervals to move the enemies, but then the problem is no ai. research starts now
+Alright, intervals arent that, they sequence events. they help to script actions
+so it looks like that i will need to use lists and dictionaries again
+ill make it complicated but with class and one dictionary 
+One setup function
+Ai start 
+AI resume
+and prob health
+all added parameters, for excessive control,
+also, ze click function will input the damage
+
+okay s0o
+enemy list hold the dioctionarieds right
+then we reference the dictionary through ze list
+looking like enemylist[dictname]
+make the list a dict, 
+enemydict['enemynode']['enemyname']
+
+Clcik hit function, handles hits,
+Constant update, chwck for enemy die, enemy ps, cause aidot update/aiworld, check for wave end, removing npcs

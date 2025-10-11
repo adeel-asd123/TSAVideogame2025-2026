@@ -1,0 +1,103 @@
+//Cg
+/* Generated shader for render state:
+  CullFaceAttrib:cull_none(reverse)
+  LightAttrib:on
+    render/directionalLight
+    render/Scene/directionalLight
+    render/ambientLight
+  MaterialAttrib:Material Material.001 c(1 1 1 1) ior1.5 e(0 0 0 0) r0.5 m0 l0 t1
+  RescaleNormalAttrib:normalize
+  ShaderAttrib:auto
+  TextureAttrib:on Base Color:Material
+*/
+void vshader(
+	 in float4 vtx_texcoord_0 : ATTR8,
+	 out float4 l_texcoord_0 : TEXCOORD0,
+	 uniform float4x4 trans_model_to_view,
+	 out float4 l_eye_position : TEXCOORD1,
+	 uniform float4x4 tpose_view_to_model,
+	 out float3 l_eye_normal : TEXCOORD2,
+	 in float3 vtx_normal : ATTR2,
+	 uniform float4x4 mat_shadow_0,
+	 out float4 l_lightcoord0 : TEXCOORD3,
+	 uniform float4x4 mat_shadow_1,
+	 out float4 l_lightcoord1 : TEXCOORD4,
+	 in float4 vtx_position : ATTR0,
+	 out float4 l_position : POSITION,
+	 uniform float4x4 mat_modelproj
+) {
+	 l_position = mul(mat_modelproj, vtx_position);
+	 l_eye_position = mul(trans_model_to_view, vtx_position);
+	 l_texcoord_0 = vtx_texcoord_0;
+	 l_lightcoord0 = mul(mat_shadow_0, l_eye_position);
+	 l_lightcoord1 = mul(mat_shadow_1, l_eye_position);
+	 l_eye_normal = normalize(mul((float3x3)tpose_view_to_model, vtx_normal));
+}
+
+void fshader(
+	 in float4 l_eye_position : TEXCOORD1,
+	 in float3 l_eye_normal : TEXCOORD2,
+	 in float4 l_texcoord_0 : TEXCOORD0,
+	 uniform sampler2D tex_0,
+	 uniform float4x4 attr_light0,
+	 uniform sampler2DShadow shadow_0,
+	 in float4 l_lightcoord0 : TEXCOORD3,
+	 uniform float4x4 attr_light1,
+	 uniform sampler2DShadow shadow_1,
+	 in float4 l_lightcoord1 : TEXCOORD4,
+	 uniform float4x4 attr_material,
+	 out float4 o_color : COLOR0,
+	 uniform float4 attr_ambient,
+	 uniform float4 attr_colorscale
+) {
+	 // Correct the surface normal for interpolation effects
+	 l_eye_normal = normalize(l_eye_normal);
+	 float4 result;
+	 float4 texcoord0 = l_texcoord_0;
+	 // Fetch all textures.
+	 float4 tex0 = tex2D(tex_0, texcoord0.xy);
+	 // Begin view-space light calculations
+	 float ldist,lattenv,langle,lshad;
+	 float4 lcolor,lspec,lpoint,latten,ldir,leye;
+	 float3 lvec,lhalf;
+	 float4 tot_ambient = float4(0,0,0,0);
+	 float4 tot_diffuse = float4(0,0,0,0);
+	 float4 tot_specular = float4(0,0,0,0);
+	 float shininess = attr_material[3].w;
+	 tot_ambient += attr_ambient;
+	 // Directional Light 0
+	 lcolor = attr_light0[0];
+	 lspec  = lcolor;
+	 lvec   = attr_light0[3].xyz;
+	 lcolor *= saturate(dot(l_eye_normal, lvec.xyz));
+	 lshad = shadow2DProj(shadow_0, l_lightcoord0).r;
+	 lcolor *= lshad;
+	 lspec *= lshad;
+	 tot_diffuse += lcolor;
+	 lhalf = normalize(lvec - float3(0, 1, 0));
+	 lspec *= pow(saturate(dot(l_eye_normal, lhalf)), shininess);
+	 tot_specular += lspec;
+	 // Directional Light 1
+	 lcolor = attr_light1[0];
+	 lspec  = lcolor;
+	 lvec   = attr_light1[3].xyz;
+	 lcolor *= saturate(dot(l_eye_normal, lvec.xyz));
+	 lshad = shadow2DProj(shadow_1, l_lightcoord1).r;
+	 lcolor *= lshad;
+	 lspec *= lshad;
+	 tot_diffuse += lcolor;
+	 lhalf = normalize(lvec - float3(0, 1, 0));
+	 lspec *= pow(saturate(dot(l_eye_normal, lhalf)), shininess);
+	 tot_specular += lspec;
+	 // Begin view-space light summation
+	 result = attr_material[2];
+	 result += tot_ambient * attr_material[0];
+	 result += tot_diffuse * attr_material[1];
+	 result = saturate(result);
+	 // End view-space light calculations
+	 result *= attr_colorscale;
+	 result.rgba *= tex0.rgba;
+	 tot_specular *= attr_material[3];
+	 result.rgb = result.rgb + tot_specular.rgb;
+	 o_color = result * 1.000001;
+}
