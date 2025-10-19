@@ -3,12 +3,14 @@
 #    "panda3d",
 # ]
 # ///
+
 '''
 Game made by: Adeel Siddiqi and
 This is
 A game made for TSA Videogame design 2025-2026 
 '''
 __author__ = 'Adeel Siddiqi'
+
 import os
 import random
 from direct.actor.Actor import Actor
@@ -20,6 +22,7 @@ from direct.particles.ParticleEffect import ParticleEffect
 import direct.gui.DirectGuiGlobals as DGG
 from panda3d.ai import AIWorld, AICharacter
 from panda3d.core import (
+    PandaSystem,
     FrameBufferProperties, 
     WindowProperties, 
     GraphicsOutput,
@@ -45,6 +48,7 @@ from panda3d.core import (
     TransparencyAttrib,
     CardMaker,
     SamplerState,
+    VirtualFileSystem,
     Filename,
     DirectionalLight,
     AmbientLight,
@@ -68,7 +72,7 @@ from direct.gui.DirectGui import (
     DirectWaitBar
 )
 
-loadPrcFileData('', 'gl-check-errors #t')
+loadPrcFileData('', 'gl-version 4 1')
 '''
 The camera controller is a class that handles the movement and rotation of the camera in the game.
 This is the core of the camera, and it is responsible for handling the input from the user and updating the camera accordingly.
@@ -358,6 +362,7 @@ class EnemyController():
         self.EnemyDict['ai_behaviour'] = {}
         self.EnemyDict['health'] = {}
 class Game(ShowBase):
+    vfs = VirtualFileSystem.getGlobalPtr()
     inaMenu = True
     mouse_sensitivity = 0.5
     PlayerHealth = 100
@@ -367,6 +372,9 @@ class Game(ShowBase):
             'd':"right",
             'space':"up",
             'e':"down"}
+    def dayNightCycle(self):
+        for models in self.currentModels:
+            models.setShaderInput('light0_direction', (45, (Vec3(self.sunModel.getHpr()).y -10 if self.sunModel.getHpr().y > -180 else Vec3(self.sunModel.getHpr()).y +10), 0))
     def PlayerHUD(self):
         self.HUDMainFrame = DirectFrame(frameColor=(0.6, 0.6, 0.6, 1),
                                         frameSize=(-1.25, 1.25, -0.15, 0.15),
@@ -1053,9 +1061,24 @@ class Game(ShowBase):
         return Task.cont
     
     def shader(self, nodes = None, EnterNode = None):
+        self.currentModels = []
         if not hasattr(self, 'Shader_setup'):
             self.Shader_setup = None
-            self.Shader = Shader.load(Shader.SL_GLSL, "assets/shaders/Shader.vert", "assets/shaders/Shader.frag")
+            if PandaSystem.getPlatform() == 'osx_aarch64':
+                shaders = [f"{Filename.fromOsSpecific(os.path.dirname(__file__))}/assets/shaders/Shader.vert", f"{Filename.fromOsSpecific(os.path.dirname(__file__))}/assets/shaders/Shader.frag"]
+                patchedShaders = []
+                for file in shaders:    
+                    with open(file, 'r') as file:
+                        code = file.read()
+                        code = code.replace("#version 300 es", "#version 330")
+                        code = "\n".join(
+                            line for line in code.splitlines()
+                            if not line.strip().startswith("precision")
+                        )
+                        patchedShaders.append(code)
+                self.Shader = Shader.make(Shader.SL_GLSL, patchedShaders[0], patchedShaders[1])
+            else:
+                self.Shader = Shader.load(Shader.SL_GLSL, "assets/shaders/Shader.vert", "assets/shaders/Shader.frag")
             shadow_buffer = self.win.make_texture_buffer("ShadowBuffer", 1024, 1024)
             shadow_buffer.set_sort(-100)
             shadow_buffer.set_clear_color((1, 1, 1, 1))
@@ -1071,6 +1094,8 @@ class Game(ShowBase):
             self.shadow_cam.node().set_scene(shadow_scene)
         if EnterNode == None:
             for node in nodes:
+                self.currentModels.append(node)
+                print('shdaded', node)
                 node.setShader(self.Shader)
                 node.setShaderInput("shadowMap", self.shadow_map)
                 node.setShaderInput("shadowViewMatrix", self.shadow_cam.get_mat(self.render))
@@ -1084,6 +1109,7 @@ class Game(ShowBase):
                 node.setShaderInput("cameraPos", self.camera.getPos(self.render))
 
         else:
+            self.currentModels.append(EnterNode)
             EnterNode.setShader(self.Shader)
             EnterNode.setShaderInput("shadowMap", self.shadow_map)
             EnterNode.setShaderInput("shadowViewMatrix", self.shadow_cam.get_mat(self.render))
@@ -1149,6 +1175,7 @@ class Game(ShowBase):
         self.sunModel = await self.loader.loadModel("assets/models/sun.bam", blocking=False)
         self.sunModel.setPos(150, -150, 200)
 
+        print(self.sunModel)
         ambientLight = AmbientLight('ambientLight')
         ambientLight.setColor((0.1, 0.1, 0.1, 1))
         ambientLightNP = self.render.attachNewNode(ambientLight)
@@ -1216,6 +1243,8 @@ class Game(ShowBase):
         camera_up = self.camera.getQuat(self.render).getUp()
         camera_right = self.camera.getQuat(self.render).getRight()
         camera_position = self.camera.getPos(self.render)
+
+        self.dayNightCycle()
 #            ak47_position = (
 #                camera_position +
 #                camera_forward * 2.67 -  # Forward by 1.0 units

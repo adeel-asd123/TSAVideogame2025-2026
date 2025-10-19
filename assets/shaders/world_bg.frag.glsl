@@ -1,5 +1,5 @@
-#version 300 es
-precision mediump float;
+#version 330
+
 
 in vec3 skybox_pos;
 out vec4 color;

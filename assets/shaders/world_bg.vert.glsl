@@ -1,5 +1,5 @@
-#version 300 es
-precision mediump float;
+#version 330
+
 
 // Input from the vertex buffer
 in vec4 p3d_Vertex;
