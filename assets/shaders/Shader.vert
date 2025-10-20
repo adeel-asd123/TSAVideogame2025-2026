@@ -7,7 +7,7 @@ in vec2 texcoord_0;  // <- This matches GLTF's embedded UV channel 0
 
 uniform mat4 p3d_ModelViewProjectionMatrix;
 uniform mat4 p3d_ModelMatrix;
-uniform mat4 p3d_NormalMatrix;
+uniform mat3 p3d_NormalMatrix;
 uniform mat4 shadowViewMatrix;
 
 out vec3 fragNormal;
@@ -19,7 +19,7 @@ void main() {
     vec4 worldPos = p3d_ModelMatrix * vec4(vertex, 1.0);
     fragPos = worldPos.xyz;
 
-    fragNormal = mat3(p3d_NormalMatrix) * normal;
+    fragNormal = normalize(p3d_NormalMatrix * normal);
     fragShadowCoord = shadowViewMatrix * worldPos;
     fragTexCoord = texcoord_0;
 

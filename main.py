@@ -366,6 +366,8 @@ class Game(ShowBase):
     inaMenu = True
     mouse_sensitivity = 0.5
     PlayerHealth = 100
+    sunDirection = -.45
+    cycleOscillation = ['down', 1]
     keys = {'w':"forward",
             's':"backward",
             'a':"left",
@@ -373,8 +375,26 @@ class Game(ShowBase):
             'space':"up",
             'e':"down"}
     def dayNightCycle(self):
+        step = 0.005
+        if self.cycleOscillation[0] == 'down':
+            self.sunDirection -= step
+            if self.sunDirection <= -2:
+                self.cycleOscillation[0] = 'up'
+                print('switch up')
+            if self.sunDirection <= -1:
+                self.cycleOscillation[1] = 1
+                print('off')
+            else:
+                self.cycleOscillation[1] = 0
+        elif self.cycleOscillation[0] == 'up':
+            self.sunDirection += step
+            if self.sunDirection >= 1:
+                self.cycleOscillation[0] = 'down'
+                print('switch down')
+            if self.sunDirection >= -1:
+                self.cycleOscillation[1] = 1
         for models in self.currentModels:
-            models.setShaderInput('light0_direction', (45, (Vec3(self.sunModel.getHpr()).y -10 if self.sunModel.getHpr().y > -180 else Vec3(self.sunModel.getHpr()).y +10), 0))
+            models.setShaderInput('light0_direction', (1, 1, 0))
     def PlayerHUD(self):
         self.HUDMainFrame = DirectFrame(frameColor=(0.6, 0.6, 0.6, 1),
                                         frameSize=(-1.25, 1.25, -0.15, 0.15),
@@ -1064,8 +1084,9 @@ class Game(ShowBase):
         self.currentModels = []
         if not hasattr(self, 'Shader_setup'):
             self.Shader_setup = None
-            if PandaSystem.getPlatform() == 'osx_aarch64':
-                shaders = [f"{Filename.fromOsSpecific(os.path.dirname(__file__))}/assets/shaders/Shader.vert", f"{Filename.fromOsSpecific(os.path.dirname(__file__))}/assets/shaders/Shader.frag"]
+            print(PandaSystem.getPlatform())
+            if PandaSystem.getPlatform() == 'win_amd64' or PandaSystem.getPlatform() == 'osx_aarch64 ':
+                shaders = [f"{os.path.dirname(__file__)}/assets/shaders/Shader.vert", f"{os.path.dirname(__file__)}/assets/shaders/Shader.frag"]
                 patchedShaders = []
                 for file in shaders:    
                     with open(file, 'r') as file:
@@ -1095,12 +1116,11 @@ class Game(ShowBase):
         if EnterNode == None:
             for node in nodes:
                 self.currentModels.append(node)
-                print('shdaded', node)
                 node.setShader(self.Shader)
                 node.setShaderInput("shadowMap", self.shadow_map)
                 node.setShaderInput("shadowViewMatrix", self.shadow_cam.get_mat(self.render))
                 node.setShaderInput("diffuseTex", node.find_texture("*"))
-                node.setShaderInput("light0_direction", Vec3(.45, -.45, 0))
+                node.setShaderInput("light0_direction", Vec3(.45, 1, 0))
                 node.setShaderInput("light0_color", Vec3(.75, .75, 0.5))
                 node.setShaderInput("material_diffuse", Vec4(0.2, 0.2, 0.2, 1.0))
                 node.setShaderInput("material_specular", Vec4(0.2, 0.2, 0.2, 1))
@@ -1114,7 +1134,7 @@ class Game(ShowBase):
             EnterNode.setShaderInput("shadowMap", self.shadow_map)
             EnterNode.setShaderInput("shadowViewMatrix", self.shadow_cam.get_mat(self.render))
             EnterNode.setShaderInput("diffuseTex", EnterNode.find_texture("*"))
-            EnterNode.setShaderInput("light0_direction", Vec3(.45, -.45, 0))
+            EnterNode.setShaderInput("light0_direction", Vec3(.45, 1, 0))
             EnterNode.setShaderInput("light0_color", Vec3(.75, .75, 0.5))
             EnterNode.setShaderInput("material_diffuse", Vec4(0.2, 0.2, 0.2, 1.0))
             EnterNode.setShaderInput("material_specular", Vec4(0.2, 0.2, 0.2, 1))
