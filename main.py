@@ -366,8 +366,8 @@ class Game(ShowBase):
     inaMenu = True
     mouse_sensitivity = 0.5
     PlayerHealth = 100
-    sunDirection = -.45
-    cycleOscillation = ['down', 1]
+    sunDirection = -.2
+    cycleOscillation = {'dawnOrDusk' : 'down', 'notQiyamah': -1}
     keys = {'w':"forward",
             's':"backward",
             'a':"left",
@@ -375,26 +375,19 @@ class Game(ShowBase):
             'space':"up",
             'e':"down"}
     def dayNightCycle(self):
-        step = 0.005
-        if self.cycleOscillation[0] == 'down':
-            self.sunDirection -= step
-            if self.sunDirection <= -2:
-                self.cycleOscillation[0] = 'up'
-                print('switch up')
-            if self.sunDirection <= -1:
-                self.cycleOscillation[1] = 1
-                print('off')
-            else:
-                self.cycleOscillation[1] = 0
-        elif self.cycleOscillation[0] == 'up':
+        step = 0.001
+        if self.cycleOscillation['dawnOrDusk'] == 'down':
             self.sunDirection += step
-            if self.sunDirection >= 1:
-                self.cycleOscillation[0] = 'down'
+            if self.sunDirection >= .5:
+                self.cycleOscillation['dawnOrDusk'] = 'up'
+                print('switch up')
+        elif self.cycleOscillation['dawnOrDusk'] == 'up':
+            self.sunDirection -= step
+            if self.sunDirection <= -.2:
+                self.cycleOscillation['dawnOrDusk'] = 'down'
                 print('switch down')
-            if self.sunDirection >= -1:
-                self.cycleOscillation[1] = 1
         for models in self.currentModels:
-            models.setShaderInput('light0_direction', (1, 1, 0))
+            models.setShaderInput('light0_direction', (.45, self.sunDirection['dawnOrDusk'], 0))
     def PlayerHUD(self):
         self.HUDMainFrame = DirectFrame(frameColor=(0.6, 0.6, 0.6, 1),
                                         frameSize=(-1.25, 1.25, -0.15, 0.15),
@@ -1085,7 +1078,7 @@ class Game(ShowBase):
         if not hasattr(self, 'Shader_setup'):
             self.Shader_setup = None
             print(PandaSystem.getPlatform())
-            if PandaSystem.getPlatform() == 'win_amd64' or PandaSystem.getPlatform() == 'osx_aarch64 ':
+            if PandaSystem.getPlatform() == 'win_amd64' or PandaSystem.getPlatform() == 'osx_aarch64':
                 shaders = [f"{os.path.dirname(__file__)}/assets/shaders/Shader.vert", f"{os.path.dirname(__file__)}/assets/shaders/Shader.frag"]
                 patchedShaders = []
                 for file in shaders:    
@@ -1121,10 +1114,10 @@ class Game(ShowBase):
                 node.setShaderInput("shadowViewMatrix", self.shadow_cam.get_mat(self.render))
                 node.setShaderInput("diffuseTex", node.find_texture("*"))
                 node.setShaderInput("light0_direction", Vec3(.45, 1, 0))
-                node.setShaderInput("light0_color", Vec3(.75, .75, 0.5))
+                node.setShaderInput("light0_color", Vec3(.5, .75, 0.85))
                 node.setShaderInput("material_diffuse", Vec4(0.2, 0.2, 0.2, 1.0))
                 node.setShaderInput("material_specular", Vec4(0.2, 0.2, 0.2, 1))
-                node.setShaderInput("material_shininess", 15.0)
+                node.setShaderInput("material_shininess", 10.0)
                 node.setShaderInput("ambient_color", Vec3(0.5, 0.5, 0.5))
                 node.setShaderInput("cameraPos", self.camera.getPos(self.render))
 
