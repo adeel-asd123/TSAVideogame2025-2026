@@ -367,7 +367,7 @@ class Game(ShowBase):
     mouse_sensitivity = 0.5
     PlayerHealth = 100
     sunDirection = -.2
-    cycleOscillation = {'dawnOrDusk' : 'down', 'notQiyamah': -1}
+    cycleOscillation = {'dawnOrDusk' : 'down', 'notQiyamah': .45}
     keys = {'w':"forward",
             's':"backward",
             'a':"left",
@@ -375,19 +375,25 @@ class Game(ShowBase):
             'space':"up",
             'e':"down"}
     def dayNightCycle(self):
-        step = 0.001
+        steps = {'sunSpeed': 0.0005, 'rotationSpeed': 0.0005}
+        self.cycleOscillation['notQiyamah'] -= steps['rotationSpeed']
         if self.cycleOscillation['dawnOrDusk'] == 'down':
-            self.sunDirection += step
-            if self.sunDirection >= .5:
+            self.sunDirection += steps['sunSpeed']
+            if self.sunDirection >= .15:
                 self.cycleOscillation['dawnOrDusk'] = 'up'
+                print(self.cycleOscillation['notQiyamah'])
+                self.cycleOscillation['notQiyamah'] = 0.45
+                steps['rotationSpeed'] = 0.0005
                 print('switch up')
         elif self.cycleOscillation['dawnOrDusk'] == 'up':
-            self.sunDirection -= step
-            if self.sunDirection <= -.2:
+            self.sunDirection -= steps['sunSpeed']
+            if self.sunDirection <= -.3:
                 self.cycleOscillation['dawnOrDusk'] = 'down'
+                steps['rotationSpeed'] = 0.00035
+                print(self.cycleOscillation['notQiyamah'])
                 print('switch down')
         for models in self.currentModels:
-            models.setShaderInput('light0_direction', (.45, self.sunDirection['dawnOrDusk'], 0))
+            models.setShaderInput('light0_direction', (self.cycleOscillation['notQiyamah'], self.sunDirection, 0))
     def PlayerHUD(self):
         self.HUDMainFrame = DirectFrame(frameColor=(0.6, 0.6, 0.6, 1),
                                         frameSize=(-1.25, 1.25, -0.15, 0.15),
