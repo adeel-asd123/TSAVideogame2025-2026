@@ -1159,7 +1159,7 @@ class Game(ShowBase):
 
         # Load the models in the background, each time suspending this
         # method until they are done
-        self.worldCollisionModel = await self.loader.loadModel("assets/models/worldtriangles.bam", blocking=False)
+        self.worldCollisionModel = await self.loader.loadModel("assets/models/worldTriangles.bam", blocking=False)
         self.worldVisibleModel = await self.loader.loadModel("assets/models/worldVisible.bam", blocking=False)
 
         # Create a background for the world
