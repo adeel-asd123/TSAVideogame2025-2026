@@ -398,6 +398,9 @@ class Game(ShowBase):
         self.HUDMainFrame = DirectFrame(frameColor=(0.6, 0.6, 0.6, 1),
                                         frameSize=(-1.25, 1.25, -0.15, 0.15),
                                         pos=(0, 0, -.75))
+        self.rover2PersonFrame = DirectFrame(frameColor=(0.2, 0.2, 0.2, 1),
+                                             frameSize=(-.5, .5, -0.1, 0.1),
+                                             pos=(0, 0, -.8))
     def exportScene(self):
         file_name = input("Enter file name: ")
         ss = StringStream()
