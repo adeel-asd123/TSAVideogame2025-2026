@@ -375,21 +375,21 @@ class Game(ShowBase):
             'space':"up",
             'e':"down"}
     def dayNightCycle(self):
-        steps = {'sunSpeed': 0.0005, 'rotationSpeed': 0.0005}
+        steps = {'sunSpeed': 0.0005, 'rotationSpeed': 0.000375}
         self.cycleOscillation['notQiyamah'] -= steps['rotationSpeed']
         if self.cycleOscillation['dawnOrDusk'] == 'down':
             self.sunDirection += steps['sunSpeed']
-            if self.sunDirection >= .15:
+            if self.sunDirection >= .3:
                 self.cycleOscillation['dawnOrDusk'] = 'up'
                 print(self.cycleOscillation['notQiyamah'])
                 self.cycleOscillation['notQiyamah'] = 0.45
-                steps['rotationSpeed'] = 0.0005
+                steps['rotationSpeed'] = 0.000375
                 print('switch up')
         elif self.cycleOscillation['dawnOrDusk'] == 'up':
             self.sunDirection -= steps['sunSpeed']
             if self.sunDirection <= -.3:
                 self.cycleOscillation['dawnOrDusk'] = 'down'
-                steps['rotationSpeed'] = 0.00035
+                steps['rotationSpeed'] = 0.00017
                 print(self.cycleOscillation['notQiyamah'])
                 print('switch down')
         for models in self.currentModels:
