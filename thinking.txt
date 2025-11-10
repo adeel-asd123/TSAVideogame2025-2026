@@ -19,3 +19,18 @@ enemydict['enemynode']['enemyname']
 
 Clcik hit function, handles hits,
 Constant update, chwck for enemy die, enemy ps, cause aidot update/aiworld, check for wave end, removing npcs
+
+
+Plan of timeline
+We need to add research objective
+thatb dmeans we need plot
+Lets see
+
+we have first cut scene
+then lets say 5 days of research time,
+Goal is to prove to researchers so u can be funded right?
+Then our time limits the fund
+Add a bar on gui panel for the fund, lasting for 5 days
+
+How about dialogue? We need transmission type animation right?
+Look rq
