@@ -244,7 +244,7 @@ class EnemyController():
         self._gravity = LVector3(0, 0, -2)
         self.EnemyCount = 0
         self.waveCount = 1
-        self.Font = self.showbase.loader.loadFont('assets/fonts/dimitri.ttf')
+        self.Font = self.showbase.loader.loadFont('assets/fonts/propaganda.ttf')
     async def setup(self, modelpath, extraAnims, num, height, health, waves= 5, changePerWave=1):
         self.waveMethod = AsyncFuture()
         self.num = num
@@ -374,6 +374,18 @@ class Game(ShowBase):
             'd':"right",
             'space':"up",
             'e':"down"}
+    def textTypewriteAnimation(self, textPos, text, interval=0.05):
+        textSplit = list(text)
+        textNode = OnscreenText(text='', pos=textPos, scale=0.07, fg=(1,0,0,1), align=TextNode.ALeft, font=self.loader.loadFont('assets/fonts/Micro5-Regular.ttf'))
+        def cleanup(task):
+            textNode.destroy()
+        async def typewrite():
+            for char in textSplit:
+                textNode.setText(textNode.getText() + char)
+                await Task.pause(interval)
+            await Task.pause(1)
+            return Task.done
+        taskMgr.add(typewrite(), 'typewriteTask', uponDeath=cleanup)
     def dayNightCycle(self):
         steps = {'sunSpeed': 0.0005, 'rotationSpeed': 0.000375}
         self.cycleOscillation['notQiyamah'] -= steps['rotationSpeed']
@@ -399,8 +411,8 @@ class Game(ShowBase):
                                         frameSize=(-1.25, 1.25, -0.15, 0.15),
                                         pos=(0, 0, -.75))
         self.rover2PersonFrame = DirectFrame(frameColor=(0.2, 0.2, 0.2, 1),
-                                             frameSize=(-.5, .5, -0.1, 0.1),
-                                             pos=(0, 0, -.8))
+                                             frameSize=(-.125, .125, -0.125, 0.125),
+                                             pos=(0, 0, -.75))
     def exportScene(self):
         file_name = input("Enter file name: ")
         ss = StringStream()
@@ -940,7 +952,7 @@ class Game(ShowBase):
     def MainMenu(self):
         self.inaMenu = True
         self.mainMenuBackground = OnscreenImage(image='assets/images/mainMenuBackground.png', pos=(0, 0, 0), scale=(1.5, 1.5, 1.5))
-        self.titleText = OnscreenText(text="TSA Video Game", pos=(0, .4), scale=0.3, fg=(1, 1, 1, 1), align=TextNode.ACenter)
+        self.titleText = OnscreenText(text="TSA Video Game", pos=(0, .4), scale=0.25, fg=(1, 1, 1, 1), align=TextNode.ACenter)
         self.titleText.setFont(self.Font)
         self.btnPlay = DirectButton(
             frameColor=(0.15, 0.15, 0.15, 1),
@@ -1259,6 +1271,8 @@ class Game(ShowBase):
         taskMgr.add(self.Update, "Update")        
         self.accept('mouse1-up', self.MouseUp)
         Loading_text.destroy() 
+
+        self.textTypewriteAnimation((-1,0), 'Merwais is very smart and like, hes kinda of a homosexual but like in a cool way you know?')
     # The Update cycle, this function should be used to update positions and anything that needs to be updated
     def Update(self, task):
         camera_forward = self.camera.getQuat(self.render).getForward()
@@ -1364,7 +1378,7 @@ class Game(ShowBase):
         
         #  Tell Panda3d to listen for mouse clicks
         self.accept('mouse1', self.MouseIn)
-        self.Font = self.loader.loadFont('assets/fonts/dimitri.ttf')
+        self.Font = self.loader.loadFont('assets/fonts/propaganda.ttf')
         self.Font.setPixelsPerUnit(120)
 
         self.clickSound = self.loader.loadSfx('assets/audio/click.wav')
