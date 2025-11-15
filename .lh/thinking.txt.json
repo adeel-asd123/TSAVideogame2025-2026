@@ -1,0 +1,18 @@
+{
+    "sourceFile": "thinking.txt",
+    "activeCommit": 0,
+    "commits": [
+        {
+            "activePatchIndex": 0,
+            "patches": [
+                {
+                    "date": 1763243488991,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n"
+                }
+            ],
+            "date": 1763243488991,
+            "name": "Commit-0",
+            "content": "okay so the problem witht the AI system before is thaty it was very bulky, alot of lists, im wondering if i \ncould just use intervals to move the enemies, but then the problem is no ai. research starts now\nAlright, intervals arent that, they sequence events. they help to script actions\nso it looks like that i will need to use lists and dictionaries again\nill make it complicated but with class and one dictionary \nOne setup function\nAi start \nAI resume\nand prob health\nall added parameters, for excessive control,\nalso, ze click function will input the damage\n\nokay s0o\nenemy list hold the dioctionarieds right\nthen we reference the dictionary through ze list\nlooking like enemylist[dictname]\nmake the list a dict, \nenemydict['enemynode']['enemyname']\n\nClcik hit function, handles hits,\nConstant update, chwck for enemy die, enemy ps, cause aidot update/aiworld, check for wave end, removing npcs\n\n\nPlan of timeline\nWe need to add research objective\nthatb dmeans we need plot\nLets see\n\nwe have first cut scene\nthen lets say 5 days of research time,\nGoal is to prove to researchers so u can be funded right?\nThen our time limits the fund\nAdd a bar on gui panel for the fund, lasting for 5 days\n\nHow about dialogue? We need transmission type animation right?\nLook rq\nDone! usage is textTypewriteAnimation((0,0), 'sigma')\n\nalrifght wait before i forget this\nwe have 3 main tasks hbt.\nOne uodate function for frame by frame\none for checking plot progression, call it plotAdvancer\nand one the progress plot. call it plotLine\n2 asyncfutures for each event. First PA reports to PL, telling it that event has occured\nthen a second async reports back, telling it the event is done.\nevent list, [(lambda x: x=True, lambda: print('event1')), (lambda y: y=True, lambda: print('event2'))]\nExample\n\nfor condition, event in eventlist:\n    if condition:\n        event()\n        await event1done\nreturn task.return\n\nthen here\nPL:\nawait event1start\n#whatever\nevent1Done.set_result\nawait event2start"
+        }
+    ]
+}

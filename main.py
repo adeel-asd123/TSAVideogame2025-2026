@@ -81,19 +81,20 @@ The default view is First Person. I will add a third person view later
 '''
 class CameraControllerBehaviour(DirectObject):
     _instances = 0
-    def __init__(self, camera, velocity=9, mouse_sensitivity=0.2, initial_pos=(0, 0, 114), showbase=None):
+    def __init__(self, camera, velocity=9, gravity=-2, mouse_sensitivity=0.2, initial_pos=(0, 0, 0), lockPitch = False, showbase=None):
         self._camera = camera
         self._velocity = velocity
         self._mouse_sensitivity = mouse_sensitivity
         self._keys = None
         self._input_state = InputState()
+        self._lockPitch = lockPitch
         self._heading = 0.0
         self._pitch = 0.0
         self._yaw = 0.0
         self._roll = 0.0
         self._prev_mouse = None
         self._showbase = base if showbase is None else showbase
-        self._gravity = LVector3(0, 0, -2)  # Set gravity vector pointing downward
+        self._gravity = LVector3(0, 0, gravity)  # Set gravity vector pointing downward
         self._instance = CameraControllerBehaviour._instances
         CameraControllerBehaviour._instances += 1
         self._camera.setPos(*initial_pos)
@@ -175,8 +176,8 @@ class CameraControllerBehaviour(DirectObject):
             self._pitch = self._pitch - (y - prev_y) * self._mouse_sensitivity
         self._prev_mouse = (x, y)
 
-        # Clamp the pitch to prevent camera flipping over
-        self._pitch = max(-89, min(89, self._pitch))
+        # Clamp or lock the pitch to prevent camera flipping over
+        self._pitch = 0 if self._lockPitch else max(-89, min(89, self._pitch))
         
         # Set the camera's orientation
         self._showbase.camera.setHpr(self._yaw, self._pitch, self._roll)
@@ -361,6 +362,7 @@ class EnemyController():
         self.EnemyDict['ai_char'] = {}
         self.EnemyDict['ai_behaviour'] = {}
         self.EnemyDict['health'] = {}
+
 class Game(ShowBase):
     vfs = VirtualFileSystem.getGlobalPtr()
     inaMenu = True
@@ -372,8 +374,9 @@ class Game(ShowBase):
             's':"backward",
             'a':"left",
             'd':"right",
-            'space':"up",
-            'e':"down"}
+#            'space':"up",
+#            'e':"down"
+            }
     def textTypewriteAnimation(self, textPos, text, interval=0.05):
         textSplit = list(text)
         textNode = OnscreenText(text='', pos=textPos, scale=0.07, fg=(1,0,0,1), align=TextNode.ALeft, font=self.loader.loadFont('assets/fonts/Micro5-Regular.ttf'))
@@ -1272,7 +1275,6 @@ class Game(ShowBase):
         self.accept('mouse1-up', self.MouseUp)
         Loading_text.destroy() 
 
-        self.textTypewriteAnimation((-1,0), 'Merwais is very smart and like, hes kinda of a homosexual but like in a cool way you know?')
     # The Update cycle, this function should be used to update positions and anything that needs to be updated
     def Update(self, task):
         camera_forward = self.camera.getQuat(self.render).getForward()
@@ -1351,7 +1353,7 @@ class Game(ShowBase):
         return Task.cont
     def __init__(self):
         super().__init__()
-
+        
         self.currentwave = 0
 
         # Defining the Traverser, the task that checks for collisions, and the pusher, the task that pushes objects when it collides
@@ -1360,7 +1362,9 @@ class Game(ShowBase):
         self.pusher = CollisionHandlerPusher()
 
         # Camera setup
-        self.cam_controller = CameraControllerBehaviour(self.camera, velocity=10, mouse_sensitivity=self.mouse_sensitivity)
+        self.cam_controller = CameraControllerBehaviour(self.camera, velocity=10, gravity=-5
+                                                        ,mouse_sensitivity=self.mouse_sensitivity
+                                                        ,lockPitch=True)
         self.cam_controller.setup(keys=self.keys)
         self.cam_controller.disable()
         camera_collision_node = CollisionNode('camera')

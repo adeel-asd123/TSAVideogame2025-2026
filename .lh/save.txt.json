@@ -1,0 +1,22 @@
+{
+    "sourceFile": "save.txt",
+    "activeCommit": 0,
+    "commits": [
+        {
+            "activePatchIndex": 1,
+            "patches": [
+                {
+                    "date": 1762881991453,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n"
+                },
+                {
+                    "date": 1762882278590,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n@@ -1,2 +1,2 @@\n-LPoint3f(0, 0, 154)\n+LPoint3f(0, 0, 254)\n 0\n\\ No newline at end of file\n"
+                }
+            ],
+            "date": 1762881991452,
+            "name": "Commit-0",
+            "content": "LPoint3f(0, 0, 154)\n0"
+        }
+    ]
+}

@@ -34,3 +34,27 @@ Add a bar on gui panel for the fund, lasting for 5 days
 
 How about dialogue? We need transmission type animation right?
 Look rq
+Done! usage is textTypewriteAnimation((0,0), 'sigma')
+
+alrifght wait before i forget this
+we have 3 main tasks hbt.
+One uodate function for frame by frame
+one for checking plot progression, call it plotAdvancer
+and one the progress plot. call it plotLine
+2 asyncfutures for each event. First PA reports to PL, telling it that event has occured
+then a second async reports back, telling it the event is done.
+event list, [(lambda x: x=True, lambda: print('event1')), (lambda y: y=True, lambda: print('event2'))]
+Example
+
+for condition, event in eventlist:
+    if condition:
+        event()
+        await event1done
+return task.return
+
+then here
+PL:
+await event1start
+#whatever
+event1Done.set_result
+await event2start
