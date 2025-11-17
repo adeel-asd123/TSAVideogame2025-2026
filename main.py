@@ -474,8 +474,6 @@ class Game(ShowBase):
             extraArgs=[self],
         )
     def MouseIn(self):
-#           if not self.inaMenu:
-#            self.particleEffect.start(self.ak47, self.ak47)
         props = self.win.getProperties()
         # This is needed to for WebGL. If the window is not in focus, the mouse won't work, so we need to request focus
         if not self.inaMenu:
@@ -496,12 +494,15 @@ class Game(ShowBase):
         self.collision_queue = CollisionHandlerQueue()
         self.cTrav.addCollider(self.ray_path, self.collision_queue)
         taskMgr.add(self.click, "clickTask")
+
+        self.ballDown = True
     def MouseUp(self):
-        self.particleEffect.disable()
+        taskMgr.remove("clickTask")
         if hasattr(self, 'ray_path'):
             self.cTrav.removeCollider(self.ray_path)  # Remove collider from traverser
             self.ray_path.removeNode()  # Safely remove the ray
             self.collision_queue.clearEntries()
+        self.ballDown = False
     def SaveProgress(self, reset=False):
         if reset:
             self.save_file = open("save.txt", "w")
@@ -1075,7 +1076,7 @@ class Game(ShowBase):
     async def click(self, task):
         # Perform collision traversal
         self.cTrav.traverse(self.render)
-        
+        print(self.ball.getPos())
         try:
             # Process collisions
             num_collisions = self.collision_queue.getNumEntries()
@@ -1096,7 +1097,6 @@ class Game(ShowBase):
             print("KeyError occurred during collision processing.")
             pass
         return Task.cont
-    
     def shader(self, nodes = None, EnterNode = None):
         self.currentModels = []
         if not hasattr(self, 'Shader_setup'):
@@ -1266,10 +1266,17 @@ class Game(ShowBase):
         # initialize the camera controller
         self.CameraOperator()
         
-        self.particleEffect = ParticleEffect()
+        self.researchLocationEffect = ParticleEffect()
         os.chdir(os.path.abspath(os.path.dirname(__file__)))
-        self.particleEffect.loadConfig(f"{Filename.fromOsSpecific(os.path.dirname(__file__))}/assets/particles/gunfiring.ptf")
-        self.particleEffect.clearShader()
+        self.researchLocationEffect.loadConfig(f"{Filename.fromOsSpecific(os.path.dirname(__file__))}/assets/particles/researchParticles.ptf")
+        self.researchLocationEffect.clearShader()
+        
+        self.researchLocationEffect.start(parent=self.render, renderParent=self.render)
+        self.researchLocationEffect.setPos(0, 0, 250)
+
+        self.ball = self.loader.loadModel("assets/models/sun.bam")
+        self.ball.reparentTo(self.render)
+        self.ballDown = False
         # Start the update cycle
         taskMgr.add(self.Update, "Update")        
         self.accept('mouse1-up', self.MouseUp)
@@ -1350,6 +1357,11 @@ class Game(ShowBase):
                 command=LoadMainMenu,
                 extraArgs=[self],
             )
+        if not self.ballDown:
+            pos = self.camera.getPos(self.render)
+            forward = self.camera.getQuat(self.render).getForward()
+            self.ball.setPos(pos + forward * 50)
+
         return Task.cont
     def __init__(self):
         super().__init__()
@@ -1364,7 +1376,7 @@ class Game(ShowBase):
         # Camera setup
         self.cam_controller = CameraControllerBehaviour(self.camera, velocity=10, gravity=-5
                                                         ,mouse_sensitivity=self.mouse_sensitivity
-                                                        ,lockPitch=True)
+                                                        ,lockPitch=False)
         self.cam_controller.setup(keys=self.keys)
         self.cam_controller.disable()
         camera_collision_node = CollisionNode('camera')
