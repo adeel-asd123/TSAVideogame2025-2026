@@ -71,7 +71,6 @@ from direct.gui.DirectGui import (
     DirectEntry,
     DirectWaitBar
 )
-
 loadPrcFileData('', 'gl-version 4 1')
 '''
 The camera controller is a class that handles the movement and rotation of the camera in the game.
@@ -1235,6 +1234,7 @@ class Game(ShowBase):
         self.btnTutorial.destroy()
 
         # Create a loading screen
+        print("Loading Screen")
         Loading_text = OnscreenText("Loading…")
 
         self.HealthBar = DirectWaitBar(text="Hull", value=100, pos=(-.85, -15, -.7))
@@ -1266,13 +1266,10 @@ class Game(ShowBase):
         # initialize the camera controller
         self.CameraOperator()
         
-        self.researchLocationEffect = ParticleEffect()
-        os.chdir(os.path.abspath(os.path.dirname(__file__)))
-        self.researchLocationEffect.loadConfig(f"{Filename.fromOsSpecific(os.path.dirname(__file__))}/assets/particles/researchParticles.ptf")
-        self.researchLocationEffect.clearShader()
         
-        self.researchLocationEffect.start(parent=self.render, renderParent=self.render)
-        self.researchLocationEffect.setPos(0, 0, 250)
+        
+#        self.researchLocationEffect.start(parent=self.render, renderParent=self.render)
+#        self.researchLocationEffect.setPos(0, 0, 250)
 
         self.ball = self.loader.loadModel("assets/models/sun.bam")
         self.ball.reparentTo(self.render)
@@ -1404,7 +1401,37 @@ class Game(ShowBase):
 #        self.messenger.toggleVerbose()
         self.accept('x', self.exportScene)
 
+        self.Plot = Plot
+
         # Open the main menu
         self.MainMenu()
+class Plot(Game):
+    async def plotLine(self):
+        self.researchNode = self.loader.loadModel("assets/models/researchModel.bam")
+        self.researchNode.reparentTo(self.render)
+        self.researchLocationEffect = ParticleEffect()
+        os.chdir(os.path.abspath(os.path.dirname(__file__)))
+        self.researchLocationEffect.loadConfig(f"{Filename.fromOsSpecific(os.path.dirname(__file__))}/assets/particles/researchParticles.ptf")
+        self.researchLocationEffect.clearShader()
+        self.researchLocationEffect.setPos(0, 0, 250)
+        await self.plotAsync
+        print('very cool')
+    async def conditionBasedAdvancer(self):
+        for i in range(self.eventCounter):
+            if self.plotCondition[i]:
+                self.eventAdvanceFunc['finish']()
+                await self.advanceAsync
+    def __init__(self):
+        super().__init__()
+        self.plotAsync = AsyncFuture()
+        self.advanceAsync = AsyncFuture()
+        self.eventAdvanceFunc = {'finish': lambda: self.plotAsync.set_result(None), 'reset': lambda: self.plotAsync == AsyncFuture()}
+        self.eventDoneFunc = {'finish': lambda: self.advanceAsync.set_result(None), 'reset': lambda: self.advanceAsync == AsyncFuture()}
+        self.plotCondition = [True if self.collision_queue.getNumEntries() > 1 and self.researchNode.getName() == self.collision_queue.sortEntries().getEntry(1).getIntoNode().getName() else False]
+        self.eventCounter = len(self.plotCondition)
+        self.plotEvents = {"researchGoalAchieved": self.plotCondition[0]}
+        taskMgr.add(self.conditionBasedAdvancer, "ConditionBasedAdvancer") 
+        taskMgr.add(self.plotLine, "PlotLine")
+
 game = Game()
 base.run()
