@@ -1,0 +1,18 @@
+{
+    "sourceFile": "plot.py",
+    "activeCommit": 0,
+    "commits": [
+        {
+            "activePatchIndex": 0,
+            "patches": [
+                {
+                    "date": 1763438550537,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n"
+                }
+            ],
+            "date": 1763438550537,
+            "name": "Commit-0",
+            "content": "from main import Game\nfrom panda3d.core import AsyncFuture\nclass Plot(Game):\n    async def plotLine(self):\n        self.researchNode() = None\n        await self.plotAsync\n        pass\n    async def conditionBasedAdvancer(self):\n        if self.plotConditionFunctions[0]:\n            pass\n    def __init__(self):\n        super().__init__()\n        self.plotAsync = AsyncFuture()\n        self.advanceAsync = AsyncFuture()\n        self.eventAdvanceFunc = {'finish': lambda: self.plotAsync.set_result(None), 'reset': lambda: self.plotAsync == AsyncFuture()}\n        self.eventDoneFunc = {'finish': lambda: self.advanceAsync.set_result(None), 'reset': lambda: self.advanceAsync == AsyncFuture()}\n        self.plotConditionFunctions = [lambda: True if self.researchNode.getName() == self.collision_queue.sortEntries().getEntry(1).getIntoNode().getName() else False]\n        self.plotEvents = {\"researchGoalAchieved\": self.plotConditionFunctions[0]}"
+        }
+    ]
+}

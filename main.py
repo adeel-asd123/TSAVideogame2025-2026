@@ -1397,7 +1397,7 @@ class Game(ShowBase):
         self.Font = self.loader.loadFont('assets/fonts/propaganda.ttf')
         self.Font.setPixelsPerUnit(120)
 
-        self.clickSound = self.loader.loadSfx('assets/audio/click.wav')
+        self.clickSound = self.loader.loadSfx('assets/audio/click.ogg')
 
         self.enableParticles()
 
