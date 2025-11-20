@@ -494,14 +494,14 @@ class Game(ShowBase):
         self.cTrav.addCollider(self.ray_path, self.collision_queue)
         taskMgr.add(self.click, "clickTask")
 
-        self.ballDown = True
+        #self.ballDown = True
     def MouseUp(self):
         taskMgr.remove("clickTask")
         if hasattr(self, 'ray_path'):
             self.cTrav.removeCollider(self.ray_path)  # Remove collider from traverser
             self.ray_path.removeNode()  # Safely remove the ray
             self.collision_queue.clearEntries()
-        self.ballDown = False
+        #self.ballDown = False
     def SaveProgress(self, reset=False):
         if reset:
             self.save_file = open("save.txt", "w")
@@ -1075,7 +1075,7 @@ class Game(ShowBase):
     async def click(self, task):
         # Perform collision traversal
         self.cTrav.traverse(self.render)
-        print(self.ball.getPos())
+        #print(self.ball.getPos())
         try:
             # Process collisions
             num_collisions = self.collision_queue.getNumEntries()
@@ -1235,7 +1235,7 @@ class Game(ShowBase):
 
         # Create a loading screen
         print("Loading Screen")
-        Loading_text = OnscreenText("Loading…")
+        Loading_text = OnscreenText("Loading…", scale=2, parent=self.a2dTopCenter, pos=(0, 0), fg=(1, 1, 1, 1), align=TextNode.ACenter)
 
         self.HealthBar = DirectWaitBar(text="Hull", value=100, pos=(-.85, -15, -.7))
         self.HealthBar['barColor'] = (0, 2, 0, 2)
@@ -1271,9 +1271,9 @@ class Game(ShowBase):
 #        self.researchLocationEffect.start(parent=self.render, renderParent=self.render)
 #        self.researchLocationEffect.setPos(0, 0, 250)
 
-        self.ball = self.loader.loadModel("assets/models/sun.bam")
-        self.ball.reparentTo(self.render)
-        self.ballDown = False
+        #self.ball = self.loader.loadModel("assets/models/sun.bam")
+        #self.ball.reparentTo(self.render)
+        #self.ballDown = False
         # Start the update cycle
         taskMgr.add(self.Update, "Update")        
         self.accept('mouse1-up', self.MouseUp)
@@ -1354,13 +1354,13 @@ class Game(ShowBase):
                 command=LoadMainMenu,
                 extraArgs=[self],
             )
-        if not self.ballDown:
-            pos = self.camera.getPos(self.render)
-            forward = self.camera.getQuat(self.render).getForward()
-            self.ball.setPos(pos + forward * 50)
+        #if not self.ballDown:
+        #    pos = self.camera.getPos(self.render)
+        #    forward = self.camera.getQuat(self.render).getForward()
+        #    self.ball.setPos(pos + forward * 50)
 
         return Task.cont
-    def __init__(self):
+    def __init__(self, Plot: 'Plot'):
         super().__init__()
         
         self.currentwave = 0
@@ -1401,37 +1401,44 @@ class Game(ShowBase):
 #        self.messenger.toggleVerbose()
         self.accept('x', self.exportScene)
 
-        self.Plot = Plot
+        self.Plot = Plot(self)
 
         # Open the main menu
         self.MainMenu()
-class Plot(Game):
-    async def plotLine(self):
-        self.researchNode = self.loader.loadModel("assets/models/researchModel.bam")
-        self.researchNode.reparentTo(self.render)
+
+class Plot():
+    async def plotLine(self, task):
+        print('loading plot line')
+        self.researchNode = self.gameInstance.loader.loadModel("assets/models/researchModel.bam")
+        self.researchNode.setPosHpr(0, 0, 250, 0, 90, 0)
+        self.researchCollisionNode = self.researchNode.find("**/+CollisionNode")
+        self.researchNode.reparentTo(self.gameInstance.render)
+        self.gameInstance.cTrav.addCollider(self.researchCollisionNode, self.gameInstance.pusher)
+        self.gameInstance.pusher.addCollider(self.researchCollisionNode, self.researchNode)
         self.researchLocationEffect = ParticleEffect()
         os.chdir(os.path.abspath(os.path.dirname(__file__)))
         self.researchLocationEffect.loadConfig(f"{Filename.fromOsSpecific(os.path.dirname(__file__))}/assets/particles/researchParticles.ptf")
         self.researchLocationEffect.clearShader()
-        self.researchLocationEffect.setPos(0, 0, 250)
+        self.researchLocationEffect.start(self.researchNode, self.researchNode)
         await self.plotAsync
         print('very cool')
-    async def conditionBasedAdvancer(self):
+    async def conditionBasedAdvancer(self, task):
         for i in range(self.eventCounter):
             if self.plotCondition[i]:
                 self.eventAdvanceFunc['finish']()
                 await self.advanceAsync
-    def __init__(self):
-        super().__init__()
+    def __init__(self, gameInstance):
+        self.gameInstance = gameInstance
         self.plotAsync = AsyncFuture()
         self.advanceAsync = AsyncFuture()
         self.eventAdvanceFunc = {'finish': lambda: self.plotAsync.set_result(None), 'reset': lambda: self.plotAsync == AsyncFuture()}
         self.eventDoneFunc = {'finish': lambda: self.advanceAsync.set_result(None), 'reset': lambda: self.advanceAsync == AsyncFuture()}
-        self.plotCondition = [True if self.collision_queue.getNumEntries() > 1 and self.researchNode.getName() == self.collision_queue.sortEntries().getEntry(1).getIntoNode().getName() else False]
+        self.plotCondition = [True if hasattr(self.gameInstance, 'collision_queue') and self.gameInstance.collision_queue.getNumEntries() > 1 and self.researchNode.getName() == gameInstance.collision_queue.sortEntries().getEntry(1).getIntoNode().getName() else False]
         self.eventCounter = len(self.plotCondition)
         self.plotEvents = {"researchGoalAchieved": self.plotCondition[0]}
+        print('Initializing plot line')
         taskMgr.add(self.conditionBasedAdvancer, "ConditionBasedAdvancer") 
         taskMgr.add(self.plotLine, "PlotLine")
 
-game = Game()
+game = Game(Plot)
 base.run()
