@@ -497,6 +497,7 @@ class Game(ShowBase):
         #self.ballDown = True
     def MouseUp(self):
         taskMgr.remove("clickTask")
+        print(self.collision_queue)
         if hasattr(self, 'ray_path'):
             self.cTrav.removeCollider(self.ray_path)  # Remove collider from traverser
             self.ray_path.removeNode()  # Safely remove the ray
@@ -1412,28 +1413,33 @@ class Plot():
         self.researchNode = self.gameInstance.loader.loadModel("assets/models/researchModel.bam")
         self.researchNode.setPosHpr(0, 0, 250, 0, 90, 0)
         self.researchCollisionNode = self.researchNode.find("**/+CollisionNode")
-        self.researchNode.reparentTo(self.gameInstance.render)
+        print(self.researchCollisionNode.getName())
         self.gameInstance.cTrav.addCollider(self.researchCollisionNode, self.gameInstance.pusher)
         self.gameInstance.pusher.addCollider(self.researchCollisionNode, self.researchNode)
+        self.researchNode.reparentTo(self.gameInstance.render)
+        self.researchNode.hide()
         self.researchLocationEffect = ParticleEffect()
         os.chdir(os.path.abspath(os.path.dirname(__file__)))
         self.researchLocationEffect.loadConfig(f"{Filename.fromOsSpecific(os.path.dirname(__file__))}/assets/particles/researchParticles.ptf")
         self.researchLocationEffect.clearShader()
-        self.researchLocationEffect.start(self.researchNode, self.researchNode)
+        self.researchLocationEffect.start(self.researchNode, self.gameInstance.render)
         await self.plotAsync
         print('very cool')
     async def conditionBasedAdvancer(self, task):
-        for i in range(self.eventCounter):
+        for i in range(0, self.eventCounter):
+            #print(self.plotCondition[i])
             if self.plotCondition[i]:
+                print(f'Advancing plot event {i}')
                 self.eventAdvanceFunc['finish']()
                 await self.advanceAsync
+        return Task.cont
     def __init__(self, gameInstance):
         self.gameInstance = gameInstance
         self.plotAsync = AsyncFuture()
         self.advanceAsync = AsyncFuture()
         self.eventAdvanceFunc = {'finish': lambda: self.plotAsync.set_result(None), 'reset': lambda: self.plotAsync == AsyncFuture()}
         self.eventDoneFunc = {'finish': lambda: self.advanceAsync.set_result(None), 'reset': lambda: self.advanceAsync == AsyncFuture()}
-        self.plotCondition = [True if hasattr(self.gameInstance, 'collision_queue') and self.gameInstance.collision_queue.getNumEntries() > 1 and self.researchNode.getName() == gameInstance.collision_queue.sortEntries().getEntry(1).getIntoNode().getName() else False]
+        self.plotCondition = [True if hasattr(self.gameInstance, 'collision_queue') and self.gameInstance.collision_queue.getNumEntries() > 1 and self.researchCollisionNode.getName() == ((self.gameInstance.collision_queue.getEntry(1)).getIntoNode()).getName() else False]
         self.eventCounter = len(self.plotCondition)
         self.plotEvents = {"researchGoalAchieved": self.plotCondition[0]}
         print('Initializing plot line')
