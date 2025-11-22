@@ -485,6 +485,7 @@ class Game(ShowBase):
         ray.setOrigin(0, 0, 0)  # Start at the camera
         ray.setDirection(0, 1, 0)  # Point forward
         ray_node.addSolid(ray)
+        
 
         # Attach the CollisionRay to the camera and set it to the right bitmasks
         self.ray_path = self.camera.attachNewNode(ray_node)
@@ -1409,7 +1410,6 @@ class Game(ShowBase):
 
 class Plot():
     async def plotLine(self, task):
-        print('loading plot line')
         self.researchNode = self.gameInstance.loader.loadModel("assets/models/researchModel.bam")
         self.researchNode.setPosHpr(0, 0, 250, 0, 90, 0)
         self.researchCollisionNode = self.researchNode.find("**/+CollisionNode")
@@ -1427,9 +1427,8 @@ class Plot():
         print('very cool')
     async def conditionBasedAdvancer(self, task):
         for i in range(0, self.eventCounter):
-            #print(self.plotCondition[i])
-            if self.plotCondition[i]:
-                print(f'Advancing plot event {i}')
+            if self.plotCondition[i] == True:
+                print(f'Advancing plot event \n \n \n \n{i}')
                 self.eventAdvanceFunc['finish']()
                 await self.advanceAsync
         return Task.cont
@@ -1439,10 +1438,10 @@ class Plot():
         self.advanceAsync = AsyncFuture()
         self.eventAdvanceFunc = {'finish': lambda: self.plotAsync.set_result(None), 'reset': lambda: self.plotAsync == AsyncFuture()}
         self.eventDoneFunc = {'finish': lambda: self.advanceAsync.set_result(None), 'reset': lambda: self.advanceAsync == AsyncFuture()}
-        self.plotCondition = [True if hasattr(self.gameInstance, 'collision_queue') and self.gameInstance.collision_queue.getNumEntries() > 1 and self.researchCollisionNode.getName() == ((self.gameInstance.collision_queue.getEntry(1)).getIntoNode()).getName() else False]
+        self.plotCondition = [(True if hasattr(self.gameInstance, 'collision_queue') and self.gameInstance.collision_queue.getNumEntries() > 1 and self.researchCollisionNode.getName() == ((self.gameInstance.collision_queue.getEntry(1)).getIntoNode()).getName() else False)]
         self.eventCounter = len(self.plotCondition)
+        print(self.plotCondition[0])
         self.plotEvents = {"researchGoalAchieved": self.plotCondition[0]}
-        print('Initializing plot line')
         taskMgr.add(self.conditionBasedAdvancer, "ConditionBasedAdvancer") 
         taskMgr.add(self.plotLine, "PlotLine")
 
