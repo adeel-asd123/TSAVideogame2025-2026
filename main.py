@@ -301,7 +301,6 @@ class EnemyController():
                 self.waveCount += 1
                 self.Messagesent = False
                 self.num += changePerWave
-        print('Done')
     def DamagePlayer(self, collision='nothing'):
         for i in range(len(self.EnemyDict['model'])+1):
             if 'enemy' + str(i) in str(collision) and 'camera' in str(collision):
@@ -395,17 +394,13 @@ class Game(ShowBase):
             self.sunDirection += steps['sunSpeed']
             if self.sunDirection >= .3:
                 self.cycleOscillation['dawnOrDusk'] = 'up'
-                print(self.cycleOscillation['notQiyamah'])
                 self.cycleOscillation['notQiyamah'] = 0.45
                 steps['rotationSpeed'] = 0.000375
-                print('switch up')
         elif self.cycleOscillation['dawnOrDusk'] == 'up':
             self.sunDirection -= steps['sunSpeed']
             if self.sunDirection <= -.3:
                 self.cycleOscillation['dawnOrDusk'] = 'down'
                 steps['rotationSpeed'] = 0.00017
-                print(self.cycleOscillation['notQiyamah'])
-                print('switch down')
         for models in self.currentModels:
             models.setShaderInput('light0_direction', (self.cycleOscillation['notQiyamah'], self.sunDirection, 0))
     def PlayerHUD(self):
@@ -499,6 +494,8 @@ class Game(ShowBase):
     def MouseUp(self):
         taskMgr.remove("clickTask")
         print(self.collision_queue)
+        if hasattr(self, 'hit_name'):
+            delattr(self, 'hit_name')
         if hasattr(self, 'ray_path'):
             self.cTrav.removeCollider(self.ray_path)  # Remove collider from traverser
             self.ray_path.removeNode()  # Safely remove the ray
@@ -531,7 +528,6 @@ class Game(ShowBase):
     def TutorialMenu(self):
         self.clickSound.play()
         self.paused = True
-        self.currentTime = 0
         self.tutorialMainFrame = DirectFrame(frameColor=(0.6, 0.6, 0.6, 1),
                                         frameSize=(-1.25, 1.25, -0.9, 0.9),
                                         pos=(0, 0, 0)
@@ -678,8 +674,7 @@ class Game(ShowBase):
                                                 relief=DGG.FLAT
                                                 )
             def changesensitivity():
-                self.mouse_sensitivity = self.sensitivitySlider['value'] * .2
-                print(self.sensitivitySlider['value'])      
+                self.mouse_sensitivity = self.sensitivitySlider['value'] * .2   
             self.sensitivitySlider = DirectSlider(range=(0,2), 
                                   value=1, 
                                   command=changesensitivity, 
@@ -1081,11 +1076,10 @@ class Game(ShowBase):
         try:
             # Process collisions
             num_collisions = self.collision_queue.getNumEntries()
-
             if num_collisions > 1:
                 self.collision_queue.sortEntries()
                 entry = self.collision_queue.getEntry(1)  # Get the closest collision
-                hit_node = entry.getIntoNode()
+                self.hit_name = (entry.getIntoNode()).getName()
                 # Check if the hit node is the model that is supposed to be clicked using something like this:
 #                for enemy in list(self.enemy.EnemyDict['collision'].values()):
 #                    if hit_node.getName() == enemy.getName():
@@ -1102,7 +1096,6 @@ class Game(ShowBase):
         self.currentModels = []
         if not hasattr(self, 'Shader_setup'):
             self.Shader_setup = None
-            print(PandaSystem.getPlatform())
             if PandaSystem.getPlatform() == 'win_amd64' or PandaSystem.getPlatform() == 'osx_aarch64':
                 shaders = [f"{os.path.dirname(__file__)}/assets/shaders/Shader.vert", f"{os.path.dirname(__file__)}/assets/shaders/Shader.frag"]
                 patchedShaders = []
@@ -1213,7 +1206,6 @@ class Game(ShowBase):
         self.sunModel = await self.loader.loadModel("assets/models/sun.bam", blocking=False)
         self.sunModel.setPos(150, -150, 200)
 
-        print(self.sunModel)
         ambientLight = AmbientLight('ambientLight')
         ambientLight.setColor((0.1, 0.1, 0.1, 1))
         ambientLightNP = self.render.attachNewNode(ambientLight)
@@ -1413,7 +1405,6 @@ class Plot():
         self.researchNode = self.gameInstance.loader.loadModel("assets/models/researchModel.bam")
         self.researchNode.setPosHpr(0, 0, 250, 0, 90, 0)
         self.researchCollisionNode = self.researchNode.find("**/+CollisionNode")
-        print(self.researchCollisionNode.getName())
         self.gameInstance.cTrav.addCollider(self.researchCollisionNode, self.gameInstance.pusher)
         self.gameInstance.pusher.addCollider(self.researchCollisionNode, self.researchNode)
         self.researchNode.reparentTo(self.gameInstance.render)
@@ -1426,11 +1417,15 @@ class Plot():
         await self.plotAsync
         print('very cool')
     async def conditionBasedAdvancer(self, task):
+        # Evaluate dynamic check functions each iteration instead of using a stale boolean list
         for i in range(0, self.eventCounter):
-            if self.plotCondition[i] == True:
-                print(f'Advancing plot event \n \n \n \n{i}')
-                self.eventAdvanceFunc['finish']()
-                await self.advanceAsync
+            try:
+                if self.plotChecks[i]():
+                    self.eventAdvanceFunc['finish']()
+                    await self.advanceAsync
+            except Exception as e:
+                # Don't crash the loop if a check can't run yet (e.g. researchCollisionNode missing)
+                print("Plot check error:", e)
         return Task.cont
     def __init__(self, gameInstance):
         self.gameInstance = gameInstance
@@ -1438,10 +1433,14 @@ class Plot():
         self.advanceAsync = AsyncFuture()
         self.eventAdvanceFunc = {'finish': lambda: self.plotAsync.set_result(None), 'reset': lambda: self.plotAsync == AsyncFuture()}
         self.eventDoneFunc = {'finish': lambda: self.advanceAsync.set_result(None), 'reset': lambda: self.advanceAsync == AsyncFuture()}
-        self.plotCondition = [(True if hasattr(self.gameInstance, 'collision_queue') and self.gameInstance.collision_queue.getNumEntries() > 1 and self.researchCollisionNode.getName() == ((self.gameInstance.collision_queue.getEntry(1)).getIntoNode()).getName() else False)]
-        self.eventCounter = len(self.plotCondition)
-        print(self.plotCondition[0])
-        self.plotEvents = {"researchGoalAchieved": self.plotCondition[0]}
+        # Use callables so conditions are evaluated fresh each loop.
+        self.plotChecks = [
+            # Check 0: research goal achieved — only true when gameInstance has hit_name and researchCollisionNode exists and names match
+            lambda: hasattr(self.gameInstance, 'hit_name') and hasattr(self, 'researchCollisionNode') and (self.researchCollisionNode.getName() == self.gameInstance.hit_name),
+            lambda: False
+        ]
+        self.eventCounter = len(self.plotChecks)
+        self.plotEvents = {"researchGoalAchieved": self.plotChecks[0]}
         taskMgr.add(self.conditionBasedAdvancer, "ConditionBasedAdvancer") 
         taskMgr.add(self.plotLine, "PlotLine")
 
