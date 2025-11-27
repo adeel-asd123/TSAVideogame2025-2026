@@ -1414,18 +1414,21 @@ class Plot():
         self.researchLocationEffect.loadConfig(f"{Filename.fromOsSpecific(os.path.dirname(__file__))}/assets/particles/researchParticles.ptf")
         self.researchLocationEffect.clearShader()
         self.researchLocationEffect.start(self.researchNode, self.gameInstance.render)
+        for i in range(0, 10):
+            await self.plotAsync
+            self.eventAdvanceFunc['reset']()
+            self.researchCollisionNode.setPos(self.pointLocations[i])
+            self.eventDoneFunc['finish']()
+        self.plotChecks[0] = lambda: False  # Disable further checks for this event
         await self.plotAsync
-        print('very cool')
+        # Next event
     async def conditionBasedAdvancer(self, task):
-        # Evaluate dynamic check functions each iteration instead of using a stale boolean list
         for i in range(0, self.eventCounter):
-            try:
-                if self.plotChecks[i]():
-                    self.eventAdvanceFunc['finish']()
-                    await self.advanceAsync
-            except Exception as e:
-                # Don't crash the loop if a check can't run yet (e.g. researchCollisionNode missing)
-                print("Plot check error:", e)
+            if self.plotChecks[i]():
+                self.eventAdvanceFunc['finish']()
+                await self.advanceAsync
+                self.eventDoneFunc['reset']()
+
         return Task.cont
     def __init__(self, gameInstance):
         self.gameInstance = gameInstance
@@ -1441,6 +1444,11 @@ class Plot():
         ]
         self.eventCounter = len(self.plotChecks)
         self.plotEvents = {"researchGoalAchieved": self.plotChecks[0]}
+
+        # Event Storage, Variables, whatever you need to store for the plot
+        self.pointLocations = []
+
+        # Add the tasks to the task manager
         taskMgr.add(self.conditionBasedAdvancer, "ConditionBasedAdvancer") 
         taskMgr.add(self.plotLine, "PlotLine")
 
