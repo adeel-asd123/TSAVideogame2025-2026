@@ -410,6 +410,17 @@ class Game(ShowBase):
         self.rover2PersonFrame = DirectFrame(frameColor=(0.2, 0.2, 0.2, 1),
                                              frameSize=(-.125, .125, -0.125, 0.125),
                                              pos=(0, 0, -.75))
+        self.HealthBar = DirectWaitBar(text="Hull", value=100, pos=(-.85, -15, -.7))
+        self.HealthBar['barColor'] = (0, 2, 0, 2)
+        self.HealthBar['text_scale'] = .05
+        self.HealthBar['frameSize'] = (-.35, .35, -.035, .02)
+        self.HealthBar['barRelief']= DGG.SUNKEN
+
+        self.HullBar = DirectWaitBar(text="Fuel", value=100, pos=(-.85, -1, -.8))
+        self.HullBar['barColor'] = (2, .5, 0, 2)
+        self.HullBar['text_scale'] = .05
+        self.HullBar['frameSize'] = (-.35, .35, -.035, .02)
+        self.HullBar['barRelief']= DGG.SUNKEN
     def exportScene(self):
         file_name = input("Enter file name: ")
         ss = StringStream()
@@ -493,7 +504,6 @@ class Game(ShowBase):
         #self.ballDown = True
     def MouseUp(self):
         taskMgr.remove("clickTask")
-        print(self.collision_queue)
         if hasattr(self, 'hit_name'):
             delattr(self, 'hit_name')
         if hasattr(self, 'ray_path'):
@@ -1151,8 +1161,9 @@ class Game(ShowBase):
             EnterNode.setShaderInput("material_specular", Vec4(0.2, 0.2, 0.2, 1))
             EnterNode.setShaderInput("material_shininess", 15.0)
             EnterNode.setShaderInput("ambient_color", Vec3(0.5, 0.5, 0.5))
+            EnterNode.setShaderInput("cameraPos", self.camera.getPos(self.render))
     # This function loads the models in the background, reducing lag and improving performance
-    async def loadScene(self):
+    async def readyScene(self):
 
         # in case of death, we need to reload the bool
         if hasattr(self, '_player_died'):
@@ -1196,76 +1207,30 @@ class Game(ShowBase):
         self.cTrav.addCollider(self.world_collision_node, self.pusher)
         self.pusher.addCollider(self.world_collision_node, self.worldCollisionModel)
 
-        # Set up Lighting System
+        # Set up Lighting SystemF
         self.sunLight = DirectionalLight('directionalLight')
         self.sunLight.setShadowCaster(True, 16384, 16384)
         self.sunLightNP = self.render.attachNewNode(self.sunLight)
         self.sunLightNP.setHpr(45, 45, 0)
         self.sunLight.setColor((1.5, 1.5, 1.5, 1))
-        
-        self.sunModel = await self.loader.loadModel("assets/models/sun.bam", blocking=False)
-        self.sunModel.setPos(150, -150, 200)
 
         ambientLight = AmbientLight('ambientLight')
         ambientLight.setColor((0.1, 0.1, 0.1, 1))
-        ambientLightNP = self.render.attachNewNode(ambientLight)
+        self.ambientLightNP = self.render.attachNewNode(ambientLight)
         
         # Set the shaders
         ''' Most of the time this is very custom. Though there is a pipeline that can be used
             Most of this stuff can be recycled
         '''
-        self.shader([self.sunModel, self.worldVisibleModel])
-        
-        # Wait for the player to start the game
-        await self.playButtonMethod
-        Loading_text = OnscreenText("Loading…", scale=2, parent=self.a2dTopCenter, pos=(0, 0), fg=(1, 1, 1, 1), align=TextNode.ACenter)
-        self.clickSound.play()
-        await Task.pause(10)
+        self.shader(EnterNode=self.worldVisibleModel)
 
-        # Remove the main menu
-        self.titleText.destroy()
-        self.btnPlay.destroy()
-        self.mainMenuBackground.destroy()
-        self.btnOption.destroy()
-        self.btnTutorial.destroy()
-        
-        self.HealthBar = DirectWaitBar(text="Hull", value=100, pos=(-.85, -15, -.7))
-        self.HealthBar['barColor'] = (0, 2, 0, 2)
-        self.HealthBar['text_scale'] = .05
-        self.HealthBar['frameSize'] = (-.35, .35, -.035, .02)
-        self.HealthBar['barRelief']= DGG.SUNKEN
-
-        self.HullBar = DirectWaitBar(text="Fuel", value=100, pos=(-.85, -1, -.8))
-        self.HullBar['barColor'] = (2, .5, 0, 2)
-        self.HullBar['text_scale'] = .05
-        self.HullBar['frameSize'] = (-.35, .35, -.035, .02)
-        self.HullBar['barRelief']= DGG.SUNKEN
-
-        # Reparent the models to the render, making the world, and set the lights
-        self.worldCollisionModel.reparentTo(self.render)
-        self.worldVisibleModel.reparentTo(self.render)
-        self.render.setLight(self.sunLightNP)
-        self.render.setLight(ambientLightNP)
-        self.sunModel.reparentTo(self.render)
-        
-        # Add HUD
-        self.PlayerHUD()
-        
-        # Add a Pause Menu
-        pausetext = OnscreenText("To Pause press P", pos=(-1.14, 0.95), scale=0.05, fg=(0, 0, 0, 1), align=TextNode.ACenter)
-        self.accept('p', self.PauseMenu)
-
-        # initialize the camera controller
-        self.CameraOperator()
-        
-        
-        
 #        self.researchLocationEffect.start(parent=self.render, renderParent=self.render)
 #        self.researchLocationEffect.setPos(0, 0, 250)
 
         #self.ball = self.loader.loadModel("assets/models/sun.bam")
         #self.ball.reparentTo(self.render)
         #self.ballDown = False
+
         # Start the update cycle
         taskMgr.add(self.Update, "Update")        
         self.accept('mouse1-up', self.MouseUp)
@@ -1289,8 +1254,8 @@ class Game(ShowBase):
 #            self.ak47.setHpr(self.camera.getH(), 0, 90)
         
         self.worldCollisionModel.setPos(0, 0, 0)
-        
-        self.HealthBar['value'] = self.PlayerHealth
+        if hasattr(self, 'self.HealthBar'):
+            self.HealthBar['value'] = self.PlayerHealth 
 
         if self.PlayerHealth < 0 and not hasattr(self, '_player_died'):
             self._player_died = None
@@ -1379,7 +1344,7 @@ class Game(ShowBase):
 
         #   We load the tasks in the background to reduce lag
         self.playButtonMethod = AsyncFuture()
-        taskMgr.add(self.loadScene())
+        taskMgr.add(self.readyScene())
         
         #  Tell Panda3d to listen for mouse clicks
         self.accept('mouse1', self.MouseIn)
@@ -1400,6 +1365,37 @@ class Game(ShowBase):
 
 class Plot():
     async def plotLine(self, task):
+        await self.gameInstance.playButtonMethod
+        self.gameInstance.clickSound.play()
+
+        # Remove the main menu
+        self.gameInstance.titleText.destroy()
+        self.gameInstance.btnPlay.destroy()
+        self.gameInstance.mainMenuBackground.destroy()
+        self.gameInstance.btnOption.destroy()
+        self.gameInstance.btnTutorial.destroy()
+
+        # Create a loading screen
+        print("Loading Screen")
+        Loading_text = OnscreenText("Loading…", scale=2, parent=self.gameInstance.a2dTopCenter, pos=(0, 0), fg=(1, 1, 1, 1), align=TextNode.ACenter)
+
+        # Reparent the models to the render, making the world, and set the lights
+        self.gameInstance.worldCollisionModel.reparentTo(self.gameInstance.render)
+        self.gameInstance.render.setLight(self.gameInstance.sunLightNP)
+        self.gameInstance.worldVisibleModel.reparentTo(self.gameInstance.render)
+        self.gameInstance.render.setLight(self.gameInstance.ambientLightNP)
+        
+        # Add HUD
+        self.gameInstance.PlayerHUD()
+        
+        # Add a Pause Menu
+        pausetext = OnscreenText("To Pause press P", pos=(-1.14, 0.95), scale=0.05, fg=(0, 0, 0, 1), align=TextNode.ACenter)
+        self.gameInstance.accept('p', self.gameInstance.PauseMenu)
+
+        # initialize the camera controller
+        self.gameInstance.CameraOperator()
+
+
         self.researchNode = self.gameInstance.loader.loadModel("assets/models/researchModel.bam")
         self.researchNode.setPosHpr(0, 0, 250, 0, 90, 0)
         self.researchCollisionNode = self.researchNode.find("**/+CollisionNode")
