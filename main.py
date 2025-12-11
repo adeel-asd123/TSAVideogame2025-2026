@@ -1218,7 +1218,9 @@ class Game(ShowBase):
         
         # Wait for the player to start the game
         await self.playButtonMethod
+        Loading_text = OnscreenText("Loading…", scale=2, parent=self.a2dTopCenter, pos=(0, 0), fg=(1, 1, 1, 1), align=TextNode.ACenter)
         self.clickSound.play()
+        await Task.pause(10)
 
         # Remove the main menu
         self.titleText.destroy()
@@ -1226,11 +1228,7 @@ class Game(ShowBase):
         self.mainMenuBackground.destroy()
         self.btnOption.destroy()
         self.btnTutorial.destroy()
-
-        # Create a loading screen
-        print("Loading Screen")
-        Loading_text = OnscreenText("Loading…", scale=2, parent=self.a2dTopCenter, pos=(0, 0), fg=(1, 1, 1, 1), align=TextNode.ACenter)
-
+        
         self.HealthBar = DirectWaitBar(text="Hull", value=100, pos=(-.85, -15, -.7))
         self.HealthBar['barColor'] = (0, 2, 0, 2)
         self.HealthBar['text_scale'] = .05
