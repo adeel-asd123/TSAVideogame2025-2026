@@ -1234,7 +1234,11 @@ class Game(ShowBase):
         # Start the update cycle
         taskMgr.add(self.Update, "Update")        
         self.accept('mouse1-up', self.MouseUp)
-        Loading_text.destroy() 
+#        Loading_text.destroy() 
+
+        self.roverModel = self.loader.loadModel("assets/models/Rover.glb")
+        self.roverModel.reparentTo(self.render)
+        self.roverModel.setPos(0, 0, 200)
 
     # The Update cycle, this function should be used to update positions and anything that needs to be updated
     def Update(self, task):
@@ -1377,9 +1381,10 @@ class Plot():
 
         # Create a loading screen
         print("Loading Screen")
-        Loading_text = OnscreenText("Loading…", scale=2, parent=self.gameInstance.a2dTopCenter, pos=(0, 0), fg=(1, 1, 1, 1), align=TextNode.ACenter)
+#        Loading_text = OnscreenText("Loading…", scale=2, parent=self.gameInstance.a2dTopCenter, pos=(0, 0), fg=(1, 1, 1, 1), align=TextNode.ACenter)
 
         # Reparent the models to the render, making the world, and set the lights
+        await Task.pause(3)
         self.gameInstance.worldCollisionModel.reparentTo(self.gameInstance.render)
         self.gameInstance.render.setLight(self.gameInstance.sunLightNP)
         self.gameInstance.worldVisibleModel.reparentTo(self.gameInstance.render)
