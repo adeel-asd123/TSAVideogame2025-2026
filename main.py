@@ -22,10 +22,12 @@ from direct.particles.ParticleEffect import ParticleEffect
 import direct.gui.DirectGuiGlobals as DGG
 from panda3d.ai import AIWorld, AICharacter
 from panda3d.core import (
+    Camera,
     PandaSystem,
     FrameBufferProperties, 
-    WindowProperties, 
-    GraphicsOutput,
+    WindowProperties,
+    GraphicsOutput, 
+    GraphicsPipe,
     StringStream,
     AsyncFuture,
     LVecBase3f,
@@ -421,6 +423,9 @@ class Game(ShowBase):
         self.HullBar['text_scale'] = .05
         self.HullBar['frameSize'] = (-.35, .35, -.035, .02)
         self.HullBar['barRelief']= DGG.SUNKEN
+
+        self.cm.setFrame(-.125, .125, -0.125, 0.125)
+        self.thirdPersonCard = self.rover2PersonFrame.attachNewNode(self.cm.generate())
     def exportScene(self):
         file_name = input("Enter file name: ")
         ss = StringStream()
@@ -1231,35 +1236,76 @@ class Game(ShowBase):
         #self.ball.reparentTo(self.render)
         #self.ballDown = False
 
-        # Start the update cycle
-        taskMgr.add(self.Update, "Update")        
-        self.accept('mouse1-up', self.MouseUp)
 #        Loading_text.destroy() 
 
         self.roverModel = self.loader.loadModel("assets/models/Rover.glb")
         self.roverModel.reparentTo(self.render)
-        self.roverModel.setPos(0, 0, 200)
+
+        self.roverModel.setScale(2)
+
+        # Request 8 RGB bits, no alpha bits, and a depth buffer.
+        fb_prop = FrameBufferProperties()
+        fb_prop.setRgbColor(True)
+        fb_prop.setRgbaBits(8, 8, 8, 0)
+        fb_prop.setDepthBits(16)
+
+        # Create a WindowProperties object set to 512x512 size.
+        win_prop = WindowProperties(size=(512, 512))
+
+        # Don't open a window - force it to be an offscreen buffer.
+        flags = GraphicsPipe.BF_refuse_window
+
+        self.thirdPersonBuffer = self.graphicsEngine.make_output(self.pipe, "third person", -100, fb_prop, win_prop, flags, self.win.getGsg(), self.win)
+        self.thirdPersonBuffer.setSort(-100)
+        self.thirdPersonCam = self.makeCamera(self.thirdPersonBuffer)
+        self.thirdPersonCam.reparentTo(self.render)
+        self.thirdPersonTexture = Texture()
+        self.thirdPersonBuffer.addRenderTexture(
+            self.thirdPersonTexture,
+            GraphicsOutput.RTMCopyRam,   # or RTMBindOrCopy
+            GraphicsOutput.RTPColor
+        )
+        # Start the update cycle
+        taskMgr.add(self.Update, "Update")        
+        self.accept('mouse1-up', self.MouseUp)
 
     # The Update cycle, this function should be used to update positions and anything that needs to be updated
     def Update(self, task):
+
+        if hasattr(self, 'thirdPersonCard'):
+            self.cm.setUvRange(self.thirdPersonTexture)
+            self.thirdPersonCard.setTexture(self.thirdPersonTexture)
+            self.thirdPersonCam.lookAt(self.roverModel)
+
         camera_forward = self.camera.getQuat(self.render).getForward()
         camera_up = self.camera.getQuat(self.render).getUp()
         camera_right = self.camera.getQuat(self.render).getRight()
         camera_position = self.camera.getPos(self.render)
 
         self.dayNightCycle()
-#            ak47_position = (
-#                camera_position +
-#                camera_forward * 2.67 -  # Forward by 1.0 units
-#                camera_up * 1 +       # Downward by 0.5 units
-#                camera_right * 0.8      # Rightward by 0.3 units
-#            )
-#            self.ak47.setPos(ak47_position)
-#            self.ak47.setHpr(self.camera.getH(), 0, 90)
         
+        Rover_Position = (
+            camera_position+
+            camera_forward * 0 -  # Forward by 1.0 units
+            camera_up * 2.5 +       # Downward by 0.5 units
+            camera_right * 0      # Rightward by 0.3 units
+        )
+
+        ThirdPersonCam_Position = (
+            camera_position+
+            camera_forward * 10 +  # Backward by 10.0 units
+            camera_up * 5 +       # Upward by 5.0 units
+            camera_right * 0      # Rightward by 0.0 units
+        )
+
+        self.roverModel.setPos(Rover_Position)
+        self.roverModel.setHpr(self.camera.getH(), 90, 90)
+        
+        self.thirdPersonCam.setPos(ThirdPersonCam_Position)
+
         self.worldCollisionModel.setPos(0, 0, 0)
         if hasattr(self, 'self.HealthBar'):
-            self.HealthBar['value'] = self.PlayerHealth 
+            self.HealthBar['value'] = self.PlayerHealth
 
         if self.PlayerHealth < 0 and not hasattr(self, '_player_died'):
             self._player_died = None
@@ -1348,6 +1394,9 @@ class Game(ShowBase):
 
         #   We load the tasks in the background to reduce lag
         self.playButtonMethod = AsyncFuture()
+
+        self.cm = CardMaker("card")
+
         taskMgr.add(self.readyScene())
         
         #  Tell Panda3d to listen for mouse clicks
