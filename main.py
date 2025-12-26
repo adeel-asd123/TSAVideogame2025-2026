@@ -13,6 +13,7 @@ __author__ = 'Adeel Siddiqi'
 
 import os
 import random
+from direct.showbase.Transitions import Transitions
 from direct.actor.Actor import Actor
 from direct.showbase.ShowBase import ShowBase
 from direct.task import Task
@@ -377,9 +378,9 @@ class Game(ShowBase):
 #            'space':"up",
 #            'e':"down"
             }
-    def textTypewriteAnimation(self, textPos, text, interval=0.05):
+    def textTypewriteAnimation(self, parent, textPos, text, scale = 0.07, interval=0.05):
         textSplit = list(text)
-        textNode = OnscreenText(text='', pos=textPos, scale=0.07, fg=(1,0,0,1), align=TextNode.ALeft, font=self.loader.loadFont('assets/fonts/Micro5-Regular.ttf'))
+        textNode = OnscreenText(parent=parent, text='', pos=textPos, scale=scale, fg=(0,1,0,1), align=TextNode.ALeft, font=self.loader.loadFont('assets/fonts/Micro5-Regular.ttf'))
         def cleanup(task):
             textNode.destroy()
         async def typewrite():
@@ -1176,14 +1177,6 @@ class Game(ShowBase):
         
         if hasattr(self, '_player_won'):
             delattr(self, '_player_won')  # Remove self._player_won
-            
-        with open(f'{os.path.dirname(__file__)}/save.txt', 'r') as f:
-            line = f.readline()
-            line = line.replace('LPoint3f(', '').replace(')', '')
-            x, y, z = map(float, line.split(','))
-        
-
-        self.camera.setPos(x, y, z)
 
         # Load the models in the background, each time suspending this
         # method until they are done
@@ -1193,7 +1186,6 @@ class Game(ShowBase):
         # Create a background for the world
         
         self.world_bg = await self.loader.loadModel("assets/models/skybox.bam",blocking=False)
-        self.world_bg.reparent_to(self.render)
         self.world_bg.set_scale(2500)
 
         world_bg_texture = self.loader.loadTexture("assets/images/world_bg.png")
@@ -1201,7 +1193,7 @@ class Game(ShowBase):
         world_bg_texture.set_magfilter(SamplerState.FT_linear)
         world_bg_texture.set_wrap_u(SamplerState.WM_repeat)
         world_bg_texture.set_wrap_v(SamplerState.WM_mirror)
-        world_bg_texture.set_anisotropic_degree(200)
+        world_bg_texture.set_anisotropic_degree(400)
         self.world_bg.set_texture(world_bg_texture)
         world_bg_shader = Shader.load(Shader.SL_GLSL, "assets/shaders/world_bg.vert.glsl", "assets/shaders/world_bg.frag.glsl")
         self.world_bg.set_shader(world_bg_shader) 
@@ -1238,11 +1230,6 @@ class Game(ShowBase):
 
 #        Loading_text.destroy() 
 
-        self.roverModel = self.loader.loadModel("assets/models/Rover.glb")
-        self.roverModel.reparentTo(self.render)
-
-        self.roverModel.setScale(2)
-
         # Request 8 RGB bits, no alpha bits, and a depth buffer.
         fb_prop = FrameBufferProperties()
         fb_prop.setRgbColor(True)
@@ -1271,8 +1258,7 @@ class Game(ShowBase):
 
     # The Update cycle, this function should be used to update positions and anything that needs to be updated
     def Update(self, task):
-
-        if hasattr(self, 'thirdPersonCard'):
+        if hasattr(self, 'thirdPersonCard') and hasattr(self, 'roverModel'):
             self.cm.setUvRange(self.thirdPersonTexture)
             self.thirdPersonCard.setTexture(self.thirdPersonTexture)
             self.thirdPersonCam.lookAt(self.roverModel)
@@ -1297,13 +1283,14 @@ class Game(ShowBase):
             camera_up * 5 +       # Upward by 5.0 units
             camera_right * 0      # Rightward by 0.0 units
         )
-
-        self.roverModel.setPos(Rover_Position)
-        self.roverModel.setHpr(self.camera.getH(), 90, 90)
+        if hasattr(self, 'roverModel'):
+            self.roverModel.setPos(Rover_Position)
+            self.roverModel.setHpr(self.camera.getH(), 90, 90)
         
         self.thirdPersonCam.setPos(ThirdPersonCam_Position)
 
         self.worldCollisionModel.setPos(0, 0, 0)
+        
         if hasattr(self, 'self.HealthBar'):
             self.HealthBar['value'] = self.PlayerHealth
 
@@ -1370,6 +1357,9 @@ class Game(ShowBase):
     def __init__(self, Plot: 'Plot'):
         super().__init__()
         
+        lens = self.cam.node().getLens()
+        lens.setFocalLength(0.25)
+
         self.currentwave = 0
 
         # Defining the Traverser, the task that checks for collisions, and the pusher, the task that pushes objects when it collides
@@ -1378,6 +1368,7 @@ class Game(ShowBase):
         self.pusher = CollisionHandlerPusher()
 
         # Camera setup
+        self.transitions = Transitions(self.loader)
         self.cam_controller = CameraControllerBehaviour(self.camera, velocity=10, gravity=-5
                                                         ,mouse_sensitivity=self.mouse_sensitivity
                                                         ,lockPitch=False)
@@ -1418,6 +1409,13 @@ class Game(ShowBase):
 
 class Plot():
     async def plotLine(self, task):
+        self.EuropaModel = await self.gameInstance.loader.loadModel("assets/models/europa.glb", blocking=False)
+        self.EuropaModel.setScale(100)
+        self.gameInstance.setBackgroundColor(0, 0, 0, 0)
+        self.roverModel = self.gameInstance.loader.loadModel("assets/models/Rover.glb")
+        self.roverModel.setScale(2)
+        self.roverModel.setPos(850, 1950, 470)
+
         await self.gameInstance.playButtonMethod
         self.gameInstance.clickSound.play()
 
@@ -1431,9 +1429,75 @@ class Plot():
         # Create a loading screen
         print("Loading Screen")
 #        Loading_text = OnscreenText("Loading…", scale=2, parent=self.gameInstance.a2dTopCenter, pos=(0, 0), fg=(1, 1, 1, 1), align=TextNode.ACenter)
+        
+        self.zoomIn = True
+        # Rover in space animation, flying towards Europa
+        def LookatRover(task):
+            self.gameInstance.camera.lookAt(self.roverModel)
+            if self.zoomIn:
+                self.gameInstance.cam.node().getLens().setFocalLength(self.gameInstance.cam.node().getLens().getFocalLength() + 0.01)
+            return Task.cont
+        self.gameInstance.transitions.fadeIn(3)
+        self.EuropaModel.reparentTo(self.gameInstance.render)
+        self.gameInstance.camera.setPos(760, 1860, 470)
+        self.roverModel.reparentTo(self.gameInstance.render)
+        taskMgr.add(LookatRover, "LookatRover")
+        roverPosInterval = self.roverModel.posInterval(7, LPoint3f(0, 0, 0))
+        roverHprInterval = self.roverModel.hprInterval(7, LVecBase3f(90, 1440, 170))
+        roverHprInterval.start()
+        roverPosInterval.start()
+        await Task.pause(7)
+
+        # Clean up after the animation
+        taskMgr.remove("LookatRover")
+        self.gameInstance.transitions.fadeOut(1)
+        self.gameInstance.cam.node().getLens().setFocalLength(1.5)
+        self.zoomIn = False
+        self.EuropaModel.removeNode()
+        
+        # Crash land animation
+        self.gameInstance.transitions.fadeIn(1)
+        self.gameInstance.camera.setPos(0, 0, 220)
+        self.gameInstance.worldVisibleModel.reparentTo(self.gameInstance.render)
+        self.roverModel.setPos(600, 100, 1000)
+        roverPosInterval = self.roverModel.posInterval(3, LPoint3f(100, 100, 300))
+        roverPosInterval2 = self.roverModel.posInterval(.25, LPoint3f(-100, 100, 190))
+        
+        taskMgr.add(LookatRover, "LookatRover")
+        roverPosInterval.start()
+        await Task.pause(3)
+        roverPosInterval2.start()
+        await Task.pause(.24)
+
+        # Cleanup after the animation
+        taskMgr.remove("LookatRover")
+        del self.zoomIn
+        self.gameInstance.transitions.fadeOut(1)
+        await Task.pause(1)
+        self.blackScreen = DirectFrame(frameColor=(0, 0, 0, 1),
+                                        frameSize=(-2, 2, -2, 2), 
+                                        pos=(0, 0, 0), 
+                                        scale=(1, 1, 1),
+                                        sortOrder=-1)
+        self.gameInstance.transitions.noFade()
+
+        await Task.pause(2)
+        self.transponderFrame = DirectFrame(frameColor=(.2, .2, .2, 1),
+                                        frameSize=(-.8, .8, -.2, .2), 
+                                        pos=(0, 0, .75), 
+                                        scale=(1, 1, 1), 
+                                        relief=DGG.RIDGE,
+                                        borderWidth=(0.05, 0.05)
+                                        )
+        self.gameInstance.textTypewriteAnimation(parent=self.transponderFrame, textPos=(-.75, .1, .5), text="Warning: Crash landing detected! Rover systems...  functional.\nTransponder signal... weak.\nMission objective: Explore the planet of Europa; \nBudget Low; We need a breakthrough \nIt's all up to you, Good luck, operator.", scale=0.05)
+        await Task.pause(5)
 
         # Reparent the models to the render, making the world, and set the lights
-        await Task.pause(3)
+        self.blackScreen.destroy()
+        self.gameInstance.transitions.fadeIn(1)
+        self.gameInstance.roverModel = self.roverModel
+        del self.roverModel
+        self.gameInstance.world_bg.reparent_to(self.gameInstance.render)
         self.gameInstance.worldCollisionModel.reparentTo(self.gameInstance.render)
         self.gameInstance.render.setLight(self.gameInstance.sunLightNP)
         self.gameInstance.worldVisibleModel.reparentTo(self.gameInstance.render)
@@ -1443,12 +1507,19 @@ class Plot():
         self.gameInstance.PlayerHUD()
         
         # Add a Pause Menu
-        pausetext = OnscreenText("To Pause press P", pos=(-1.14, 0.95), scale=0.05, fg=(0, 0, 0, 1), align=TextNode.ACenter)
+        pausetext = OnscreenText("To Pause press P", pos=(-1.14, 0.95), scale=0.05, fg=(1, 1, 1, 1), align=TextNode.ACenter)
         self.gameInstance.accept('p', self.gameInstance.PauseMenu)
 
         # initialize the camera controller
         self.gameInstance.CameraOperator()
 
+        with open(f'{os.path.dirname(__file__)}/save.txt', 'r') as f:
+            line = f.readline()
+            line = line.replace('LPoint3f(', '').replace(')', '')
+            x, y, z = map(float, line.split(','))
+        
+
+        self.gameInstance.camera.setPos(x, y, z)
 
         self.researchNode = self.gameInstance.loader.loadModel("assets/models/researchModel.bam")
         self.researchNode.setPosHpr(0, 0, 250, 0, 90, 0)
