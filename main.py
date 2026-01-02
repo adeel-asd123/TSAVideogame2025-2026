@@ -378,6 +378,8 @@ class Game(ShowBase):
 #            'space':"up",
 #            'e':"down"
             }
+    def printPos(self):
+        print(self.camera.getPos())
     def textTypewriteAnimation(self, parent, textPos, text, scale = 0.07, interval=0.05):
         textSplit = list(text)
         textNode = OnscreenText(parent=parent, text='', pos=textPos, scale=scale, fg=(0,1,0,1), align=TextNode.ALeft, font=self.loader.loadFont('assets/fonts/Micro5-Regular.ttf'))
@@ -516,6 +518,7 @@ class Game(ShowBase):
             self.cTrav.removeCollider(self.ray_path)  # Remove collider from traverser
             self.ray_path.removeNode()  # Safely remove the ray
             self.collision_queue.clearEntries()
+            self.hit_name = ''
         #self.ballDown = False
     def SaveProgress(self, reset=False):
         if reset:
@@ -1401,6 +1404,7 @@ class Game(ShowBase):
 
 #        self.messenger.toggleVerbose()
         self.accept('x', self.exportScene)
+        self.accept('k', self.printPos)
 
         self.Plot = Plot(self)
 
@@ -1522,7 +1526,7 @@ class Plot():
         self.gameInstance.camera.setPos(x, y, z)
 
         self.researchNode = self.gameInstance.loader.loadModel("assets/models/researchModel.bam")
-        self.researchNode.setPosHpr(0, 0, 250, 0, 90, 0)
+        self.researchNode.setHpr(0,90,0)
         self.researchCollisionNode = self.researchNode.find("**/+CollisionNode")
         self.gameInstance.cTrav.addCollider(self.researchCollisionNode, self.gameInstance.pusher)
         self.gameInstance.pusher.addCollider(self.researchCollisionNode, self.researchNode)
@@ -1533,13 +1537,36 @@ class Plot():
         self.researchLocationEffect.loadConfig(f"{Filename.fromOsSpecific(os.path.dirname(__file__))}/assets/particles/researchParticles.ptf")
         self.researchLocationEffect.clearShader()
         self.researchLocationEffect.start(self.researchNode, self.gameInstance.render)
-        for i in range(0, 10):
-            await self.plotAsync
-            self.eventAdvanceFunc['reset']()
-            self.researchCollisionNode.setPos(self.pointLocations[i])
-            self.eventDoneFunc['finish']()
-        self.plotChecks[0] = lambda: False  # Disable further checks for this event
+        self.researchNode.setPos(self.pointLocations[0])
+        await Task.pause(9)
+        self.gameInstance.textTypewriteAnimation(parent=self.transponderFrame, textPos=(-.75, .1, .5), text="Operator! We need something to show, to continue our funding \nOur Satellite have pinged an interesting signature on the moon; We've placed a small marker \nGo ahead and collect a sample by left clicking", scale=0.05)
         await self.plotAsync
+        print("Sample 1 Collected")
+        self.gameInstance.textTypewriteAnimation(parent=self.transponderFrame, textPos=(-.75, .1, .5), text="Amazing! We have analyzed the sample and... Wow! \nWe are detecting high amounts of CH4 (Methane) \nBut it's not enough \nWe've pinged another signature, go ahead and collect a sample!", scale=0.05)
+        self.researchNode.setPos(self.pointLocations[1])
+        self.eventAdvanceFunc['reset']()
+        self.eventDoneFunc['finish']()
+        await self.plotAsync
+        print("Sample 2 Collected")
+        self.gameInstance.textTypewriteAnimation(parent=self.transponderFrame, textPos=(-.75, .1, .5), text="This is astonishing! We've detected high amounts of Complex Carbons! We need one more sign though... Liquid water", scale=0.05)
+        self.researchNode.setPos(self.pointLocations[2])
+        self.eventAdvanceFunc['reset']()
+        self.eventDoneFunc['finish']()
+        await self.plotAsync
+        print("Sample 3 Collected")
+        self.gameInstance.textTypewriteAnimation(parent=self.transponderFrame, textPos=(-.75, .1, .5), text="Perfect! Liquid water detected! \nWe got a  $500 million grant for our operations but we're gonna burn through it quick \nWe need to keep making discoveries, and now that we see signs of life \nWE NEED TO FIND LIFE", scale=0.05)
+        await Task.pause(8)
+        self.gameInstance.textTypewriteAnimation(parent=self.transponderFrame, textPos=(-.75, .1, .5), text="You have 35 samples to find life \nWith each new sample you'll get 10 million more dollar \nOnce we find life, we can use the extra money for upgrades \nBased on your needs of course", scale=0.05)
+
+        for i in range(3, 39):
+            self.researchNode.setPos(self.pointLocations[i])
+            self.eventAdvanceFunc['reset']()
+            self.eventDoneFunc['finish']()
+            await self.plotAsync
+            print(f"Sample {i-3} Collected")
+            self.gameInstance.textTypewriteAnimation(parent=self.transponderFrame, textPos=(-.75, .1, .5), text=f"Sample {i-3} collected! Keep going operator!", scale=0.05)
+        self.plotChecks[0] = lambda: False  # Disable further checks for this event
+        self.gameInstance.textTypewriteAnimation(parent=self.transponderFrame, textPos=(-.75, .1, .5), text=f"Incredible! All 35 samples collected! \nWe've detected life signatures in multiple samples \nAnd you have {2} left in your fund! \nWe need to go deeper... Time for Upgrades!", scale=0.05)       
         # Next event
     async def conditionBasedAdvancer(self, task):
         for i in range(0, self.eventCounter):
@@ -1565,7 +1592,44 @@ class Plot():
         self.plotEvents = {"researchGoalAchieved": self.plotChecks[0]}
 
         # Event Storage, Variables, whatever you need to store for the plot
-        self.pointLocations = []
+        self.pointLocations = [LPoint3f(118.48069, 35.507602, 173.39715),
+                LPoint3f(-140.46547, -100.85309, 159.25064),
+                LPoint3f(-262.78765, -85.375465, 173.93034),
+                LPoint3f(-325.39071, -4.449741, 169.29825),
+                LPoint3f(-382.43054, 101.4453, 137.1563),
+                LPoint3f(-389.67944, 191.93561, 127.59272),
+                LPoint3f(-347.23132, 277.0387, 92.15851),
+                LPoint3f(-284.73852, 354.83175, 95.628746),
+                LPoint3f(-236.08165, 371.5732, 122.47337),
+                LPoint3f(-169.62724, 379.8985, 133.75111),
+                LPoint3f(-95.8991, 352.017, 136.68565),
+                LPoint3f(-19.416086, 331.0493, 122.97035),
+                LPoint3f(46.853675, 264.72958, 124.27496),
+                LPoint3f(90.75061, 224.11033, 126.57304),
+                LPoint3f(167.22296, 225.10248, 121.35472),
+                LPoint3f(244.48268, 272.04092, 109.59839),
+                LPoint3f(291.50067, 323.3967, 116.53203),
+                LPoint3f(357.60607, 369.92773, 98.937095),
+                LPoint3f(411.15707, 392.13858, 87.553405),
+                LPoint3f(476.01385, 341.33993, 89.037223),
+                LPoint3f(486.28485, 286.83721, 100.47837),
+                LPoint3f(487.89456, 221.99463, 98.18464),
+                LPoint3f(459.68927, 134.7083, 97.3343),
+                LPoint3f(438.48281, 84.56667, 109.779174),
+                LPoint3f(383.7995, -27.694887, 112.04575),
+                LPoint3f(313.93557, -27.287815, 125.492713),
+                LPoint3f(234.44471, -11.153708, 130.0923),
+                LPoint3f(153.96834, -58.076, 130.62211),
+                LPoint3f(-51.07051, -333.6002, 86.012344),
+                LPoint3f(-276.22778, -365.7992, 139.58493),
+                LPoint3f(-306.20043, -271.9624, 145.96353),
+                LPoint3f(-250.10818, -161.55514, 165.21084),
+                LPoint3f(-149.96858, -26.882307, 172.18632),
+                LPoint3f(-121.65235, 101.13438, 173.35678),
+                LPoint3f(7.0617895, 175.9202, 142.39662),
+                LPoint3f(70.71233, 142.88559, 159.0426),
+                LPoint3f(148.71176, 112.771286, 155.41626),
+                LPoint3f(238.17663, 38.95241, 129.26014)]
 
         # Add the tasks to the task manager
         taskMgr.add(self.conditionBasedAdvancer, "ConditionBasedAdvancer") 
