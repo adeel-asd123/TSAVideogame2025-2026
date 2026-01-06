@@ -415,6 +415,9 @@ class Game(ShowBase):
         self.rover2PersonFrame = DirectFrame(frameColor=(0.2, 0.2, 0.2, 1),
                                              frameSize=(-.125, .125, -0.125, 0.125),
                                              pos=(0, 0, -.75))
+        
+        self.crosshairDot = DirectFrame(frameColor=(1, 0, 0, 1), frameSize=(-0.0025, 0.0025, -0.0025, 0.0025), pos=(0, 0, 0))
+        
         self.HealthBar = DirectWaitBar(text="Hull", value=100, pos=(-.85, -15, -.7))
         self.HealthBar['barColor'] = (0, 2, 0, 2)
         self.HealthBar['text_scale'] = .05
@@ -1288,7 +1291,7 @@ class Game(ShowBase):
         )
         if hasattr(self, 'roverModel'):
             self.roverModel.setPos(Rover_Position)
-            self.roverModel.setHpr(self.camera.getH(), 90, 90)
+            self.roverModel.setHpr(self.camera.getH() + 90, 0, 0)
         
         self.thirdPersonCam.setPos(ThirdPersonCam_Position)
 
@@ -1446,11 +1449,11 @@ class Plot():
         self.gameInstance.camera.setPos(760, 1860, 470)
         self.roverModel.reparentTo(self.gameInstance.render)
         taskMgr.add(LookatRover, "LookatRover")
-        roverPosInterval = self.roverModel.posInterval(7, LPoint3f(0, 0, 0))
-        roverHprInterval = self.roverModel.hprInterval(7, LVecBase3f(90, 1440, 170))
+        roverPosInterval = self.roverModel.posInterval(5, LPoint3f(0, 0, 0))
+        roverHprInterval = self.roverModel.hprInterval(5, LVecBase3f(90, 1440, 170))
         roverHprInterval.start()
         roverPosInterval.start()
-        await Task.pause(7)
+        await Task.pause(5)
 
         # Clean up after the animation
         taskMgr.remove("LookatRover")
@@ -1548,29 +1551,49 @@ class Plot():
         self.eventDoneFunc['finish']()
         await self.plotAsync
         print("Sample 2 Collected")
-        self.gameInstance.textTypewriteAnimation(parent=self.transponderFrame, textPos=(-.75, .1, .5), text="This is astonishing! We've detected high amounts of Complex Carbons! We need one more sign though... Liquid water", scale=0.05)
+        self.gameInstance.textTypewriteAnimation(parent=self.transponderFrame, textPos=(-.75, .1, .5), text="This is astonishing! \nWe've detected high amounts of Complex Carbons! \nWe need one more sign though... Liquid water", scale=0.05)
         self.researchNode.setPos(self.pointLocations[2])
         self.eventAdvanceFunc['reset']()
         self.eventDoneFunc['finish']()
         await self.plotAsync
         print("Sample 3 Collected")
         self.gameInstance.textTypewriteAnimation(parent=self.transponderFrame, textPos=(-.75, .1, .5), text="Perfect! Liquid water detected! \nWe got a  $500 million grant for our operations but we're gonna burn through it quick \nWe need to keep making discoveries, and now that we see signs of life \nWE NEED TO FIND LIFE", scale=0.05)
-        await Task.pause(8)
+        await Task.pause(10)
         self.gameInstance.textTypewriteAnimation(parent=self.transponderFrame, textPos=(-.75, .1, .5), text="You have 35 samples to find life \nWith each new sample you'll get 10 million more dollar \nOnce we find life, we can use the extra money for upgrades \nBased on your needs of course", scale=0.05)
-
-        for i in range(3, 39):
+        self.FundsBar = DirectWaitBar(text="Funds:", value=100, pos=(.85, -15, -.7))
+        self.FundsBar['barColor'] = (0, 0, 2, 2)
+        self.FundsBar['text_scale'] = .05
+        self.FundsBar['frameSize'] = (-.35, .35, -.035, .02)
+        self.FundsBar['barRelief']= DGG.SUNKEN
+        async def updateFundsBar(task):
+            self.Funds -= 1_000_000
+            self.FundsBar['value'] = min(100, (self.Funds / 5_000_000))
+            self.FundsBar['text'] = f"Funds: ${self.Funds / 1_000_000:.1f}M"
+            await Task.pause(1)
+            return Task.cont
+        taskMgr.add(updateFundsBar, "updateFundsBar")
+        self.researchNode.setPos(self.pointLocations[3])
+        self.eventAdvanceFunc['reset']()
+        self.eventDoneFunc['finish']()
+        for i in range(3, 38):
+            await self.plotAsync
+            print(f"Sample {i+1} Collected")
+            self.Funds += 10_000_000
+            self.gameInstance.textTypewriteAnimation(parent=self.transponderFrame, textPos=(-.75, .1, .5), text=f"Sample {i-3} collected! Keep going operator!", scale=0.05)
             self.researchNode.setPos(self.pointLocations[i])
             self.eventAdvanceFunc['reset']()
             self.eventDoneFunc['finish']()
-            await self.plotAsync
-            print(f"Sample {i-3} Collected")
-            self.gameInstance.textTypewriteAnimation(parent=self.transponderFrame, textPos=(-.75, .1, .5), text=f"Sample {i-3} collected! Keep going operator!", scale=0.05)
         self.plotChecks[0] = lambda: False  # Disable further checks for this event
+        taskMgr.remove('updateFundsBar')  # Stop the task that checks for conditions to advance the plot
         self.gameInstance.textTypewriteAnimation(parent=self.transponderFrame, textPos=(-.75, .1, .5), text=f"Incredible! All 35 samples collected! \nWe've detected life signatures in multiple samples \nAnd you have {2} left in your fund! \nWe need to go deeper... Time for Upgrades!", scale=0.05)       
         # Next event
+    
     async def conditionBasedAdvancer(self, task):
+        await Task.pause(0.5)  # Small delay to prevent tight looping
+
         for i in range(0, self.eventCounter):
             if self.plotChecks[i]():
+                print(f"Plot Event {i} Triggered")
                 self.eventAdvanceFunc['finish']()
                 await self.advanceAsync
                 self.eventDoneFunc['reset']()
@@ -1580,8 +1603,8 @@ class Plot():
         self.gameInstance = gameInstance
         self.plotAsync = AsyncFuture()
         self.advanceAsync = AsyncFuture()
-        self.eventAdvanceFunc = {'finish': lambda: self.plotAsync.set_result(None), 'reset': lambda: self.plotAsync == AsyncFuture()}
-        self.eventDoneFunc = {'finish': lambda: self.advanceAsync.set_result(None), 'reset': lambda: self.advanceAsync == AsyncFuture()}
+        self.eventAdvanceFunc = {'finish': lambda: self.plotAsync.set_result(None), 'reset': lambda: setattr(self, 'plotAsync', AsyncFuture())}
+        self.eventDoneFunc = {'finish': lambda: self.advanceAsync.set_result(None), 'reset': lambda: setattr(self, 'advanceAsync', AsyncFuture())}
         # Use callables so conditions are evaluated fresh each loop.
         self.plotChecks = [
             # Check 0: research goal achieved — only true when gameInstance has hit_name and researchCollisionNode exists and names match
@@ -1630,7 +1653,8 @@ class Plot():
                 LPoint3f(70.71233, 142.88559, 159.0426),
                 LPoint3f(148.71176, 112.771286, 155.41626),
                 LPoint3f(238.17663, 38.95241, 129.26014)]
-
+        self.Funds = 500_000_000  # Starting funds
+        
         # Add the tasks to the task manager
         taskMgr.add(self.conditionBasedAdvancer, "ConditionBasedAdvancer") 
         taskMgr.add(self.plotLine, "PlotLine")
