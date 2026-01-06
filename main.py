@@ -1528,6 +1528,9 @@ class Plot():
 
         self.gameInstance.camera.setPos(x, y, z)
 
+        # Load in our effect and a collision node for the research points. This is where the player will collect samples to advance the plot. 
+        # We also set up the particle effect for when the player reaches these points, and we set up the text that will guide the player through the plot as they collect samples. 
+        # This is a crucial part of the game, as it introduces the main gameplay loop and gets the player engaged with the story.
         self.researchNode = self.gameInstance.loader.loadModel("assets/models/researchModel.bam")
         self.researchNode.setHpr(0,90,0)
         self.researchCollisionNode = self.researchNode.find("**/+CollisionNode")
@@ -1541,48 +1544,71 @@ class Plot():
         self.researchLocationEffect.clearShader()
         self.researchLocationEffect.start(self.researchNode, self.gameInstance.render)
         self.researchNode.setPos(self.pointLocations[0])
+        
+        # Wait for the first message
         await Task.pause(9)
+
+        # We introduce the main gameplay loop here, where the player has to collect samples from different locations on Europa to advance the plot. 
+        # Each time the player collects a sample, we update the text on the screen to guide them to the next location and provide information about their discoveries. 
+        # This loop continues until they have collected all the necessary samples, at which point we can advance the plot to the next stage. 
+        # This is where the player starts to feel like they are making progress in the game and uncovering the mysteries of Europa. 
+        # It's important to keep the player engaged with interesting text and discoveries as they collect each sample.
+
+        # First Sample
         self.gameInstance.textTypewriteAnimation(parent=self.transponderFrame, textPos=(-.75, .1, .5), text="Operator! We need something to show, to continue our funding \nOur Satellite have pinged an interesting signature on the moon; We've placed a small marker \nGo ahead and collect a sample by left clicking", scale=0.05)
         await self.plotAsync
         print("Sample 1 Collected")
+        
+        # Second Sample
         self.gameInstance.textTypewriteAnimation(parent=self.transponderFrame, textPos=(-.75, .1, .5), text="Amazing! We have analyzed the sample and... Wow! \nWe are detecting high amounts of CH4 (Methane) \nBut it's not enough \nWe've pinged another signature, go ahead and collect a sample!", scale=0.05)
         self.researchNode.setPos(self.pointLocations[1])
         self.eventAdvanceFunc['reset']()
         self.eventDoneFunc['finish']()
         await self.plotAsync
         print("Sample 2 Collected")
+
+        # Third Sample
         self.gameInstance.textTypewriteAnimation(parent=self.transponderFrame, textPos=(-.75, .1, .5), text="This is astonishing! \nWe've detected high amounts of Complex Carbons! \nWe need one more sign though... Liquid water", scale=0.05)
         self.researchNode.setPos(self.pointLocations[2])
         self.eventAdvanceFunc['reset']()
         self.eventDoneFunc['finish']()
         await self.plotAsync
         print("Sample 3 Collected")
+
+        # Instructions for the main gameplay loop for the first part of the game
         self.gameInstance.textTypewriteAnimation(parent=self.transponderFrame, textPos=(-.75, .1, .5), text="Perfect! Liquid water detected! \nWe got a  $500 million grant for our operations but we're gonna burn through it quick \nWe need to keep making discoveries, and now that we see signs of life \nWE NEED TO FIND LIFE", scale=0.05)
         await Task.pause(10)
         self.gameInstance.textTypewriteAnimation(parent=self.transponderFrame, textPos=(-.75, .1, .5), text="You have 35 samples to find life \nWith each new sample you'll get 10 million more dollar \nOnce we find life, we can use the extra money for upgrades \nBased on your needs of course", scale=0.05)
+        
         self.FundsBar = DirectWaitBar(text="Funds:", value=100, pos=(.85, -15, -.7))
         self.FundsBar['barColor'] = (0, 0, 2, 2)
         self.FundsBar['text_scale'] = .05
         self.FundsBar['frameSize'] = (-.35, .35, -.035, .02)
         self.FundsBar['barRelief']= DGG.SUNKEN
+        
         async def updateFundsBar(task):
             self.Funds -= 1_000_000
             self.FundsBar['value'] = min(100, (self.Funds / 5_000_000))
             self.FundsBar['text'] = f"Funds: ${self.Funds / 1_000_000:.1f}M"
             await Task.pause(1)
-            return Task.cont
+            return Task.cont        
         taskMgr.add(updateFundsBar, "updateFundsBar")
+
         self.researchNode.setPos(self.pointLocations[3])
         self.eventAdvanceFunc['reset']()
         self.eventDoneFunc['finish']()
+        
+        # Loop
         for i in range(3, 38):
             await self.plotAsync
             print(f"Sample {i+1} Collected")
             self.Funds += 10_000_000
-            self.gameInstance.textTypewriteAnimation(parent=self.transponderFrame, textPos=(-.75, .1, .5), text=f"Sample {i-3} collected! Keep going operator!", scale=0.05)
+            self.gameInstance.textTypewriteAnimation(parent=self.transponderFrame, textPos=(-.75, .1, .5), text=f"Sample {i+1} collected! Keep going operator!", scale=0.05)
             self.researchNode.setPos(self.pointLocations[i])
             self.eventAdvanceFunc['reset']()
             self.eventDoneFunc['finish']()
+        
+        # Clean up and 
         self.plotChecks[0] = lambda: False  # Disable further checks for this event
         taskMgr.remove('updateFundsBar')  # Stop the task that checks for conditions to advance the plot
         self.gameInstance.textTypewriteAnimation(parent=self.transponderFrame, textPos=(-.75, .1, .5), text=f"Incredible! All 35 samples collected! \nWe've detected life signatures in multiple samples \nAnd you have {2} left in your fund! \nWe need to go deeper... Time for Upgrades!", scale=0.05)       
