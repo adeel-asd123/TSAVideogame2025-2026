@@ -418,17 +418,19 @@ class Game(ShowBase):
         
         self.crosshairDot = DirectFrame(frameColor=(1, 0, 0, 1), frameSize=(-0.0025, 0.0025, -0.0025, 0.0025), pos=(0, 0, 0))
         
-        self.HealthBar = DirectWaitBar(text="Hull", value=100, pos=(-.85, -15, -.7))
-        self.HealthBar['barColor'] = (0, 2, 0, 2)
-        self.HealthBar['text_scale'] = .05
-        self.HealthBar['frameSize'] = (-.35, .35, -.035, .02)
-        self.HealthBar['barRelief']= DGG.SUNKEN
-
-        self.HullBar = DirectWaitBar(text="Fuel", value=100, pos=(-.85, -1, -.8))
-        self.HullBar['barColor'] = (2, .5, 0, 2)
+        self.HullBar = DirectWaitBar(text="Hull", value=100, pos=(-.85, -15, -.7))
+        self.HullBar['barColor'] = (0, 2, 0, 2)
         self.HullBar['text_scale'] = .05
         self.HullBar['frameSize'] = (-.35, .35, -.035, .02)
         self.HullBar['barRelief']= DGG.SUNKEN
+        self.HullValue = 100
+
+        self.PowerBar = DirectWaitBar(text="Power", value=100, pos=(-.85, -1, -.8))
+        self.PowerBar['barColor'] = (0, .5, 2, 2)
+        self.PowerBar['text_scale'] = .05
+        self.PowerBar['frameSize'] = (-.35, .35, -.035, .02)
+        self.PowerBar['barRelief']= DGG.SUNKEN
+        self.PowerValue = 100
 
         self.cm.setFrame(-.125, .125, -0.125, 0.125)
         self.thirdPersonCard = self.rover2PersonFrame.attachNewNode(self.cm.generate())
@@ -971,6 +973,15 @@ class Game(ShowBase):
             command=close_menu,
         )
         self.btnExit.setTransparency(TransparencyAttrib.MAlpha)
+    def clearGUI(self):
+        if hasattr(self, 'HullBar'):
+            self.HullBar.destroy()
+        if hasattr(self, 'PowerBar'):
+            self.PowerBar.destroy()
+        if hasattr(self, 'HUDMainFrame'):
+            self.HUDMainFrame.destroy()
+        if hasattr(self, 'rover2PersonFrame'):
+            self.rover2PersonFrame.destroy()
     def MainMenu(self):
         self.inaMenu = True
         self.mainMenuBackground = OnscreenImage(image='assets/images/mainMenuBackground.png', pos=(0, 0, 0), scale=(1.5, 1.5, 1.5))
@@ -1289,6 +1300,7 @@ class Game(ShowBase):
             camera_up * 5 +       # Upward by 5.0 units
             camera_right * 0      # Rightward by 0.0 units
         )
+        
         if hasattr(self, 'roverModel'):
             self.roverModel.setPos(Rover_Position)
             self.roverModel.setHpr(self.camera.getH() + 90, 0, 0)
@@ -1304,6 +1316,10 @@ class Game(ShowBase):
             self._player_died = None
             self.Death()
         
+        if hasattr(self, "PowerBar"):
+            self.PowerValue -= globalClock.getDt() * .5
+            self.PowerBar['value'] = self.PowerValue
+
         if not True:
             self._player_won = None
             self.CameraOperator()
@@ -1612,8 +1628,32 @@ class Plot():
         self.plotChecks[0] = lambda: False  # Disable further checks for this event
         taskMgr.remove('updateFundsBar')  # Stop the task that checks for conditions to advance the plot
         self.gameInstance.textTypewriteAnimation(parent=self.transponderFrame, textPos=(-.75, .1, .5), text=f"Incredible! All 35 samples collected! \nWe've detected life signatures in multiple samples \nAnd you have {2} left in your fund! \nWe need to go deeper... Time for Upgrades!", scale=0.05)       
-        # Next event
-    
+        
+        # This concludes the first part of the plot where the player collects samples to find signs of life. 
+        # Next, we would transition into the upgrade phase 
+
+        self.UpgradeMenu()
+    def printMenuPos(self):
+        print('Main Frame Pos:' ,self.upgradeFrame.getPos())
+        print('Main Frame Size:', self.upgradeFrame['frameSize'])
+        print('Hull Frame Pos:', self.hullUpgradeFrame.getPos())
+        print('Hull Frame Size:', self.hullUpgradeFrame['frameSize'])
+        print('Battery Frame Pos:', self.batteryUpgradeFrame.getPos())
+        print('Battery Frame Size:', self.batteryUpgradeFrame['frameSize'])
+        print('Motor Frame Pos:', self.motorUpgradeFrame.getPos())
+        print('Motor Frame Size:', self.motorUpgradeFrame['frameSize'])
+    def UpgradeMenu(self):
+        self.gameInstance.CameraOperator()
+        self.upgradeFrame = DirectFrame(frameColor=(.2, .2, .2, 1),
+                                        frameSize=(-.8, .8, -.8, .8), 
+                                        pos=(0, 0, 0), 
+                                        scale=(1.2, 1.2, 1.2), 
+                                        relief=DGG.RIDGE,
+                                        borderWidth=(0.05, 0.05)
+                                        )
+        self.hullUpgradeFrame = DirectFrame(parent=self.upgradeFrame, frameColor=(.1, .1, .1, 1), frameSize=(-.35, .35, -.1, .1), pos=(0, 0, .5), scale=(2,2,2))
+        self.batteryUpgradeFrame = DirectFrame(parent=self.upgradeFrame, frameColor=(.1, .1, .1, 1), frameSize=(-.35, .35, -.1, .1), pos=(0, 0, 0), scale=(2,2,2))
+        self.motorUpgradeFrame = DirectFrame(parent=self.upgradeFrame, frameColor=(.1, .1, .1, 1), frameSize=(-.35, .35, -.1, .1), pos=(0, 0, -0.5), scale=(2,2,2))
     async def conditionBasedAdvancer(self, task):
         await Task.pause(0.5)  # Small delay to prevent tight looping
 
@@ -1684,6 +1724,10 @@ class Plot():
         # Add the tasks to the task manager
         taskMgr.add(self.conditionBasedAdvancer, "ConditionBasedAdvancer") 
         taskMgr.add(self.plotLine, "PlotLine")
+
+        # Debugging
+        self.gameInstance.accept('u', self.UpgradeMenu)
+        self.gameInstance.accept('h', self.printMenuPos)
 
 game = Game(Plot)
 base.run()
