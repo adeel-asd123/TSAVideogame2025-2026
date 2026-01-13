@@ -3,7 +3,7 @@
     "activeCommit": 0,
     "commits": [
         {
-            "activePatchIndex": 212,
+            "activePatchIndex": 213,
             "patches": [
                 {
                     "date": 1762870163588,
@@ -856,6 +856,10 @@
                 {
                     "date": 1768319269397,
                     "content": "Index: \n===================================================================\n--- \n+++ \n@@ -984,9 +984,9 @@\n             self.rover2PersonFrame.destroy()\n     def MainMenu(self):\n         self.inaMenu = True\n         self.mainMenuBackground = OnscreenImage(image='assets/images/mainMenuBackground.png', pos=(0, 0, 0), scale=(1.5, 1.5, 1.5))\n-        self.titleText = OnscreenText(text=\"TSA Video Game\", pos=(0, .4), scale=0.25, fg=(1, 1, 1, 1), align=TextNode.ACenter)\n+        self.titleText = OnscreenText(text=\"Doomed to Europa\", pos=(0, .4), scale=0.25, fg=(1, 1, 1, 1), align=TextNode.ACenter)\n         self.titleText.setFont(self.Font)\n         self.btnPlay = DirectButton(\n             frameColor=(0.15, 0.15, 0.15, 1),\n             frameSize=(-0.2, 0.2, -0.03, 0.06),\n"
+                },
+                {
+                    "date": 1768319475333,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n@@ -1383,8 +1383,12 @@\n         lens.setFocalLength(0.25)\n \n         self.currentwave = 0\n \n+        props = WindowProperties()\n+        props.setSize(1920, 670)\n+        self.win.requestProperties(props)\n+\n         # Defining the Traverser, the task that checks for collisions, and the pusher, the task that pushes objects when it collides\n         # The Traverser reports to the pusher, we also need to tell Panda3d which objects respond to collisions\n         self.cTrav = CollisionTraverser()\n         self.pusher = CollisionHandlerPusher()\n"
                 }
             ],
             "date": 1762870163588,

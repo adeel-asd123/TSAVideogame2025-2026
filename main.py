@@ -1384,6 +1384,10 @@ class Game(ShowBase):
 
         self.currentwave = 0
 
+        props = WindowProperties()
+        props.setSize(1920, 670)
+        self.win.requestProperties(props)
+
         # Defining the Traverser, the task that checks for collisions, and the pusher, the task that pushes objects when it collides
         # The Traverser reports to the pusher, we also need to tell Panda3d which objects respond to collisions
         self.cTrav = CollisionTraverser()
