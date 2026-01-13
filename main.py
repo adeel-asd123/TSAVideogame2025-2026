@@ -985,7 +985,7 @@ class Game(ShowBase):
     def MainMenu(self):
         self.inaMenu = True
         self.mainMenuBackground = OnscreenImage(image='assets/images/mainMenuBackground.png', pos=(0, 0, 0), scale=(1.5, 1.5, 1.5))
-        self.titleText = OnscreenText(text="TSA Video Game", pos=(0, .4), scale=0.25, fg=(1, 1, 1, 1), align=TextNode.ACenter)
+        self.titleText = OnscreenText(text="Doomed to Europa", pos=(0, .4), scale=0.25, fg=(1, 1, 1, 1), align=TextNode.ACenter)
         self.titleText.setFont(self.Font)
         self.btnPlay = DirectButton(
             frameColor=(0.15, 0.15, 0.15, 1),
@@ -1303,7 +1303,7 @@ class Game(ShowBase):
         
         if hasattr(self, 'roverModel'):
             self.roverModel.setPos(Rover_Position)
-            self.roverModel.setHpr(self.camera.getH() + 90, 0, 0)
+            self.roverModel.setHpr(self.camera.getH()+90, 90, 0)
         
         self.thirdPersonCam.setPos(ThirdPersonCam_Position)
 
@@ -1478,7 +1478,7 @@ class Plot():
         self.zoomIn = False
         self.EuropaModel.removeNode()
         
-        # Crash land animation
+        # Crash land animation... work on this
         self.gameInstance.transitions.fadeIn(1)
         self.gameInstance.camera.setPos(0, 0, 220)
         self.gameInstance.worldVisibleModel.reparentTo(self.gameInstance.render)
