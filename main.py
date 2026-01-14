@@ -5,11 +5,10 @@
 # ///
 
 '''
-Game made by: Adeel Siddiqi and
-This is
+This is Doomed to Europa
 A game made for TSA Videogame design 2025-2026 
 '''
-__author__ = 'Adeel Siddiqi'
+__author__ = ''
 
 import os
 import random
@@ -1638,6 +1637,7 @@ class Plot():
 
         self.UpgradeMenu()
     def printMenuPos(self):
+        '''
         print('Main Frame Pos:' ,self.upgradeFrame.getPos())
         print('Main Frame Size:', self.upgradeFrame['frameSize'])
         print('Hull Frame Pos:', self.hullUpgradeFrame.getPos())
@@ -1646,6 +1646,13 @@ class Plot():
         print('Battery Frame Size:', self.batteryUpgradeFrame['frameSize'])
         print('Motor Frame Pos:', self.motorUpgradeFrame.getPos())
         print('Motor Frame Size:', self.motorUpgradeFrame['frameSize'])
+        '''
+        print(self.upgradeHullButton.getPos())
+        print(self.upgradeBatteryButton.getPos())
+        print(self.upgradeMotorButton.getPos())
+        print(self.upgradeHullButton['frameSize'])
+        print(self.upgradeBatteryButton['frameSize'])
+        print(self.upgradeMotorButton['frameSize'])
     def UpgradeMenu(self):
         self.gameInstance.CameraOperator()
         self.upgradeFrame = DirectFrame(frameColor=(.2, .2, .2, 1),
@@ -1659,11 +1666,11 @@ class Plot():
         self.batteryUpgradeFrame = DirectFrame(parent=self.upgradeFrame, frameColor=(.1, .1, .1, 1), frameSize=(-.35, .35, -.1, .1), pos=(0, 0, 0), scale=(2,2,2))
         self.motorUpgradeFrame = DirectFrame(parent=self.upgradeFrame, frameColor=(.1, .1, .1, 1), frameSize=(-.35, .35, -.1, .1), pos=(0, 0, -0.5), scale=(2,2,2))
         self.upgradeHullButton = DirectButton(parent=self.hullUpgradeFrame, 
-                                              frameColor=(0.15, 0.15, 0.15, 1), 
-                                              frameSize=(-0.4, 0.4, -0.08, 0.16), 
-                                              pos=LPoint3f(0, 0, -0.25), 
+                                              frameColor=(0.5, 0.5, 0.5, 1), 
+                                              frameSize=(-0.1, 0.1, -0.03, 0.06), 
+                                              pos=LPoint3f(0, 0, 0), 
                                               hpr=LVecBase3f(0, 0, 0), 
-                                              relief=DGG.RIDGE, 
+                                              relief=1, 
                                               scale=LVecBase3f(1, 1, 1), 
                                               text='Upgrade Hull', 
                                               text_align=TextNode.A_center, 
@@ -1672,18 +1679,32 @@ class Plot():
                                               text_fg=LVecBase4f(0.8, 0.8, 0.8, 1), 
                                               text_bg=LVecBase4f(0, 0, 0, 0))
         self.upgradeBatteryButton = DirectButton(parent=self.batteryUpgradeFrame, 
-                                                 frameColor=(0.15, 0.15, 0.15, 1), 
-                                                 frameSize=(-0.4, 0.4, -0.08, 0.16), 
-                                                 pos=LPoint3f(0, 0, -0.25), 
+                                                 frameColor=(0.5, 0.5, 0.5, 1), 
+                                                 frameSize=(-0.1, 0.1, -0.03, 0.06), 
+                                                 pos=LPoint3f(0, 0, 0), 
                                                  hpr=LVecBase3f(0, 0, 0), 
-                                                 relief=DGG.RIDGE, 
+                                                 relief=1, 
                                                  scale=LVecBase3f(1, 1, 1), 
                                                  text='Upgrade Battery', 
                                                  text_align=TextNode.A_center, 
                                                  text_scale=(0.075, 0.075), 
                                                  text_pos=(0, 0), 
-                                                 text_fg=LVecBase4f(0.8, 0.8, 0.8, 1), text_bg=LVecBase4f(0, 0, 0, 0))
-        self.upgradeMotorButton = DirectButton(parent=self.motorUpgradeFrame, frameColor=(0.15, 0.15, 0.15, 1), frameSize=(-0.4, 0.4, -0.08, 0.16), pos=LPoint3f(0, 0, -0.25), hpr=LVecBase3f(0, 0, 0), relief=1, scale=LVecBase3f(1, 1, 1), text='Upgrade Motor', text_align=TextNode.A_center, text_scale=(0.075, 0.075), text_pos=(0, 0), text_fg=LVecBase4f(0.8, 0.8, 0.8, 1), text_bg=LVecBase4f(0, 0, 0, 0))
+                                                 text_fg=LVecBase4f(0.8, 0.8, 0.8, 1), 
+                                                 text_bg=LVecBase4f(0, 0, 0, 0))
+        self.upgradeMotorButton = DirectButton(parent=self.motorUpgradeFrame, 
+                                               frameColor=(0.5, 0.5, 0.5, 1), 
+                                               frameSize=(-0.1, 0.1, -0.03, 0.06), 
+                                               pos=LPoint3f(0, 0, 0), 
+                                               hpr=LVecBase3f(0, 0, 0), 
+                                               relief=1, 
+                                               scale=LVecBase3f(1, 1, 1), 
+                                               text='Upgrade Motor', 
+                                               text_align=TextNode.A_center, 
+                                               text_scale=(0.075, 0.075), 
+                                               text_pos=(0, 0), 
+                                               text_fg=LVecBase4f(0.8, 0.8, 0.8, 1), 
+                                               text_bg=LVecBase4f(0, 0, 0, 0))
+
     async def conditionBasedAdvancer(self, task):
         await Task.pause(0.5)  # Small delay to prevent tight looping
 
