@@ -367,7 +367,10 @@ class Game(ShowBase):
     vfs = VirtualFileSystem.getGlobalPtr()
     inaMenu = True
     mouse_sensitivity = 0.5
-    PlayerHealth = 100
+    PlayerHull = 100
+    MaxHull = 100
+    PowerCapacity = 100
+    Speed = 10
     sunDirection = -.2
     cycleOscillation = {'dawnOrDusk' : 'down', 'notQiyamah': .45}
     keys = {'w':"forward",
@@ -381,7 +384,7 @@ class Game(ShowBase):
         print(self.camera.getPos())
     def textTypewriteAnimation(self, parent, textPos, text, scale = 0.07, interval=0.05):
         textSplit = list(text)
-        textNode = OnscreenText(parent=parent, text='', pos=textPos, scale=scale, fg=(0,1,0,1), align=TextNode.ALeft, font=self.loader.loadFont('assets/fonts/Micro5-Regular.ttf'))
+        textNode = OnscreenText(parent=parent, text='', pos=textPos, scale=scale, fg=(0,1,0,1), align=TextNode.ALeft, font=self.loader.loadFont('assets/fonts/Hacked_CRT.ttf'))
         def cleanup(task):
             textNode.destroy()
         async def typewrite():
@@ -417,14 +420,14 @@ class Game(ShowBase):
         
         self.crosshairDot = DirectFrame(frameColor=(1, 0, 0, 1), frameSize=(-0.0025, 0.0025, -0.0025, 0.0025), pos=(0, 0, 0))
         
-        self.HullBar = DirectWaitBar(text="Hull", value=100, pos=(-.85, -15, -.7))
+        self.HullBar = DirectWaitBar(text="Hull", value=self.PlayerHull, range=self.MaxHull, pos=(-.85, -15, -.7))
         self.HullBar['barColor'] = (0, 2, 0, 2)
         self.HullBar['text_scale'] = .05
         self.HullBar['frameSize'] = (-.35, .35, -.035, .02)
         self.HullBar['barRelief']= DGG.SUNKEN
         self.HullValue = 100
 
-        self.PowerBar = DirectWaitBar(text="Power", value=100, pos=(-.85, -1, -.8))
+        self.PowerBar = DirectWaitBar(text="Power", value=100, range=self.PowerCapacity, pos=(-.85, -1, -.8))
         self.PowerBar['barColor'] = (0, .5, 2, 2)
         self.PowerBar['text_scale'] = .05
         self.PowerBar['frameSize'] = (-.35, .35, -.035, .02)
@@ -445,7 +448,8 @@ class Game(ShowBase):
             # remove task, reset
             self.deathFrame.destroy()
             self.btnMainMenu.destroy()
-            self.PlayerHealth = 100
+            self.PlayerHull = 100  # Reset current hull
+            self.MaxHull = 100     # Reset max hull to initial value
             self.clickSound.play()
             taskMgr.remove('Update')
             self.SaveProgress(reset=True)
@@ -540,6 +544,7 @@ class Game(ShowBase):
         # And then we switch our bool to false, as we are no longer in a menu, enabling clicking to focus the mouse
         if self.inaMenu:
             self.cam_controller.rewatch(self.keys, mouse_sensitivity=self.mouse_sensitivity)
+            self.cam_controller._velocity = self.Speed
             self.inaMenu = False
         
         # If we are not in a menu, then we disable the camera controller
@@ -1308,15 +1313,17 @@ class Game(ShowBase):
 
         self.worldCollisionModel.setPos(0, 0, 0)
         
-        if hasattr(self, 'self.HealthBar'):
-            self.HealthBar['value'] = self.PlayerHealth
+        if hasattr(self, 'self.HullBar'):
+            self.PlayerHull = min(self.PlayerHull, self.MaxHull)
+            self.HullBar['value'] = self.PlayerHull
 
-        if self.PlayerHealth < 0 and not hasattr(self, '_player_died'):
+        if self.PlayerHull < 0 and not hasattr(self, '_player_died'):
             self._player_died = None
             self.Death()
         
         if hasattr(self, "PowerBar"):
-            self.PowerValue -= globalClock.getDt() * .5
+            self.PowerValue = min(self.PowerValue, self.PowerCapacity)
+            self.PowerValue -= globalClock.getDt() * .5            
             self.PowerBar['value'] = self.PowerValue
 
         if not True:
@@ -1394,7 +1401,7 @@ class Game(ShowBase):
 
         # Camera setup
         self.transitions = Transitions(self.loader)
-        self.cam_controller = CameraControllerBehaviour(self.camera, velocity=10, gravity=-5
+        self.cam_controller = CameraControllerBehaviour(self.camera, velocity=self.Speed, gravity=-5
                                                         ,mouse_sensitivity=self.mouse_sensitivity
                                                         ,lockPitch=False)
         self.cam_controller.setup(keys=self.keys)
@@ -1434,10 +1441,14 @@ class Game(ShowBase):
         self.MainMenu()
 
 class Plot():
+    def testingActivate(self):
+        self.testing = True
+        pass
     async def plotLine(self, task):
-        self.EuropaModel = await self.gameInstance.loader.loadModel("assets/models/europa.glb", blocking=False)
-        self.EuropaModel.setScale(100)
-        self.gameInstance.setBackgroundColor(0, 0, 0, 0)
+        if not self.testing:
+            self.EuropaModel = await self.gameInstance.loader.loadModel("assets/models/europa.glb", blocking=False)
+            self.EuropaModel.setScale(100)
+            self.gameInstance.setBackgroundColor(0, 0, 0, 0)
         self.roverModel = self.gameInstance.loader.loadModel("assets/models/Rover.glb")
         self.roverModel.setScale(2)
         self.roverModel.setPos(850, 1950, 470)
@@ -1458,69 +1469,70 @@ class Plot():
         
         self.zoomIn = True
         # Rover in space animation, flying towards Europa
-        def LookatRover(task):
-            self.gameInstance.camera.lookAt(self.roverModel)
-            if self.zoomIn:
-                self.gameInstance.cam.node().getLens().setFocalLength(self.gameInstance.cam.node().getLens().getFocalLength() + 0.01)
-            return Task.cont
-        self.gameInstance.transitions.fadeIn(3)
-        self.EuropaModel.reparentTo(self.gameInstance.render)
-        self.gameInstance.camera.setPos(760, 1860, 470)
-        self.roverModel.reparentTo(self.gameInstance.render)
-        taskMgr.add(LookatRover, "LookatRover")
-        roverPosInterval = self.roverModel.posInterval(5, LPoint3f(0, 0, 0))
-        roverHprInterval = self.roverModel.hprInterval(5, LVecBase3f(90, 1440, 170))
-        roverHprInterval.start()
-        roverPosInterval.start()
-        await Task.pause(5)
+        if not self.testing:
+            def LookatRover(task):
+                self.gameInstance.camera.lookAt(self.roverModel)
+                if self.zoomIn:
+                    self.gameInstance.cam.node().getLens().setFocalLength(self.gameInstance.cam.node().getLens().getFocalLength() + 0.01)
+                return Task.cont
+            self.gameInstance.transitions.fadeIn(3)
+            self.EuropaModel.reparentTo(self.gameInstance.render)
+            self.gameInstance.camera.setPos(760, 1860, 470)
+            self.roverModel.reparentTo(self.gameInstance.render)
+            taskMgr.add(LookatRover, "LookatRover")
+            roverPosInterval = self.roverModel.posInterval(5, LPoint3f(0, 0, 0))
+            roverHprInterval = self.roverModel.hprInterval(5, LVecBase3f(90, 1440, 170))
+            roverHprInterval.start()
+            roverPosInterval.start()
+            await Task.pause(5)
 
         # Clean up after the animation
-        taskMgr.remove("LookatRover")
-        self.gameInstance.transitions.fadeOut(1)
-        self.gameInstance.cam.node().getLens().setFocalLength(1.5)
-        self.zoomIn = False
-        self.EuropaModel.removeNode()
+            taskMgr.remove("LookatRover")
+            self.gameInstance.transitions.fadeOut(1)
+            self.gameInstance.cam.node().getLens().setFocalLength(1.5)
+            self.zoomIn = False
+            self.EuropaModel.removeNode()
         
         # Crash land animation... work on this
-        self.gameInstance.transitions.fadeIn(1)
-        self.gameInstance.camera.setPos(0, 0, 220)
-        self.gameInstance.worldVisibleModel.reparentTo(self.gameInstance.render)
-        self.roverModel.setPos(600, 100, 1000)
-        roverPosInterval = self.roverModel.posInterval(3, LPoint3f(100, 100, 300))
-        roverPosInterval2 = self.roverModel.posInterval(.25, LPoint3f(-100, 100, 190))
+            self.gameInstance.transitions.fadeIn(1)
+            self.gameInstance.camera.setPos(0, 0, 220)
+            self.gameInstance.worldVisibleModel.reparentTo(self.gameInstance.render)
+            self.roverModel.setPos(600, 100, 1000)
+            roverPosInterval = self.roverModel.posInterval(3, LPoint3f(100, 100, 300))
+            roverPosInterval2 = self.roverModel.posInterval(.25, LPoint3f(-100, 100, 190))
         
-        taskMgr.add(LookatRover, "LookatRover")
-        roverPosInterval.start()
-        await Task.pause(3)
-        roverPosInterval2.start()
-        await Task.pause(.24)
+            taskMgr.add(LookatRover, "LookatRover")
+            roverPosInterval.start()
+            await Task.pause(3)
+            roverPosInterval2.start()
+            await Task.pause(.24)
 
         # Cleanup after the animation
-        taskMgr.remove("LookatRover")
-        del self.zoomIn
-        self.gameInstance.transitions.fadeOut(1)
-        await Task.pause(1)
-        self.blackScreen = DirectFrame(frameColor=(0, 0, 0, 1),
-                                        frameSize=(-2, 2, -2, 2), 
+            taskMgr.remove("LookatRover")
+            del self.zoomIn
+            self.gameInstance.transitions.fadeOut(1)
+            await Task.pause(1)
+            self.blackScreen = DirectFrame(frameColor=(0, 0, 0, 1),
+                                        frameSize=(-4, 4, -2, 2), 
                                         pos=(0, 0, 0), 
                                         scale=(1, 1, 1),
                                         sortOrder=-1)
-        self.gameInstance.transitions.noFade()
+            self.gameInstance.transitions.noFade()
 
-        await Task.pause(2)
-        self.transponderFrame = DirectFrame(frameColor=(.2, .2, .2, 1),
-                                        frameSize=(-.8, .8, -.2, .2), 
+            await Task.pause(2)
+            self.transponderFrame = DirectFrame(frameColor=(.2, .2, .2, 1),
+                                        frameSize=(-1.5, 1.5, -.2, .2), 
                                         pos=(0, 0, .75), 
                                         scale=(1, 1, 1), 
                                         relief=DGG.RIDGE,
                                         borderWidth=(0.05, 0.05)
                                         )
-        self.gameInstance.textTypewriteAnimation(parent=self.transponderFrame, textPos=(-.75, .1, .5), text="Warning: Crash landing detected! Rover systems...  functional.\nTransponder signal... weak.\nMission objective: Explore the planet of Europa; \nBudget Low; We need a breakthrough \nIt's all up to you, Good luck, operator.", scale=0.05)
-        await Task.pause(5)
+            self.gameInstance.textTypewriteAnimation(parent=self.transponderFrame, textPos=(-1.45, .1, .5), text="Warning: Crash landing detected! Rover systems...  functional.\nTransponder signal... weak.\nMission objective: Explore the planet of Europa; \nBudget Low; We need a breakthrough \nIt's all up to you, Good luck, operator.", scale=(0.04, 0.0275))
+            await Task.pause(5)
 
         # Reparent the models to the render, making the world, and set the lights
-        self.blackScreen.destroy()
-        self.gameInstance.transitions.fadeIn(1)
+            self.blackScreen.destroy()
+            self.gameInstance.transitions.fadeIn(1)
         self.gameInstance.roverModel = self.roverModel
         del self.roverModel
         self.gameInstance.world_bg.reparent_to(self.gameInstance.render)
@@ -1533,7 +1545,7 @@ class Plot():
         self.gameInstance.PlayerHUD()
         
         # Add a Pause Menu
-        pausetext = OnscreenText("To Pause press P", pos=(-1.14, 0.95), scale=0.05, fg=(1, 1, 1, 1), align=TextNode.ACenter)
+        pausetext = OnscreenText("To Pause press P", pos=(-2.5, 0.95), scale=0.05, fg=(1, 1, 1, 1), align=TextNode.ACenter)
         self.gameInstance.accept('p', self.gameInstance.PauseMenu)
 
         # initialize the camera controller
@@ -1550,22 +1562,23 @@ class Plot():
         # Load in our effect and a collision node for the research points. This is where the player will collect samples to advance the plot. 
         # We also set up the particle effect for when the player reaches these points, and we set up the text that will guide the player through the plot as they collect samples. 
         # This is a crucial part of the game, as it introduces the main gameplay loop and gets the player engaged with the story.
-        self.researchNode = self.gameInstance.loader.loadModel("assets/models/researchModel.bam")
-        self.researchNode.setHpr(0,90,0)
-        self.researchCollisionNode = self.researchNode.find("**/+CollisionNode")
-        self.gameInstance.cTrav.addCollider(self.researchCollisionNode, self.gameInstance.pusher)
-        self.gameInstance.pusher.addCollider(self.researchCollisionNode, self.researchNode)
-        self.researchNode.reparentTo(self.gameInstance.render)
-        self.researchNode.hide()
-        self.researchLocationEffect = ParticleEffect()
-        os.chdir(os.path.abspath(os.path.dirname(__file__)))
-        self.researchLocationEffect.loadConfig(f"{Filename.fromOsSpecific(os.path.dirname(__file__))}/assets/particles/researchParticles.ptf")
-        self.researchLocationEffect.clearShader()
-        self.researchLocationEffect.start(self.researchNode, self.gameInstance.render)
-        self.researchNode.setPos(self.pointLocations[0])
+        if not self.testing:
+            self.researchNode = self.gameInstance.loader.loadModel("assets/models/researchModel.bam")
+            self.researchNode.setHpr(0,90,0)
+            self.researchCollisionNode = self.researchNode.find("**/+CollisionNode")
+            self.gameInstance.cTrav.addCollider(self.researchCollisionNode, self.gameInstance.pusher)
+            self.gameInstance.pusher.addCollider(self.researchCollisionNode, self.researchNode)
+            self.researchNode.reparentTo(self.gameInstance.render)
+            self.researchNode.hide()
+            self.researchLocationEffect = ParticleEffect()
+            os.chdir(os.path.abspath(os.path.dirname(__file__)))
+            self.researchLocationEffect.loadConfig(f"{Filename.fromOsSpecific(os.path.dirname(__file__))}/assets/particles/researchParticles.ptf")
+            self.researchLocationEffect.clearShader()
+            self.researchLocationEffect.start(self.researchNode, self.gameInstance.render)
+            self.researchNode.setPos(self.pointLocations[0])
         
         # Wait for the first message
-        await Task.pause(9)
+            await Task.pause(9)
 
         # We introduce the main gameplay loop here, where the player has to collect samples from different locations on Europa to advance the plot. 
         # Each time the player collects a sample, we update the text on the screen to guide them to the next location and provide information about their discoveries. 
@@ -1574,69 +1587,69 @@ class Plot():
         # It's important to keep the player engaged with interesting text and discoveries as they collect each sample.
 
         # First Sample
-        self.gameInstance.textTypewriteAnimation(parent=self.transponderFrame, textPos=(-.75, .1, .5), text="Operator! We need something to show, to continue our funding \nOur Satellite have pinged an interesting signature on the moon; We've placed a small marker \nGo ahead and collect a sample by left clicking", scale=0.05)
-        await self.plotAsync
-        print("Sample 1 Collected")
+            self.gameInstance.textTypewriteAnimation(parent=self.transponderFrame, textPos=(-1.45, .1, .5), text="Operator! We need something to sustain our funding \nOur Satellite have pinged an interesting signature on the moon; \nWe've placed a small marker \nGo ahead and collect a sample by left clicking", scale=(0.04, 0.0275))
+            await self.plotAsync
+            print("Sample 1 Collected")
         
         # Second Sample
-        self.gameInstance.textTypewriteAnimation(parent=self.transponderFrame, textPos=(-.75, .1, .5), text="Amazing! We have analyzed the sample and... Wow! \nWe are detecting high amounts of CH4 (Methane) \nBut it's not enough \nWe've pinged another signature, go ahead and collect a sample!", scale=0.05)
-        self.researchNode.setPos(self.pointLocations[1])
-        self.eventAdvanceFunc['reset']()
-        self.eventDoneFunc['finish']()
-        await self.plotAsync
-        print("Sample 2 Collected")
-
-        # Third Sample
-        self.gameInstance.textTypewriteAnimation(parent=self.transponderFrame, textPos=(-.75, .1, .5), text="This is astonishing! \nWe've detected high amounts of Complex Carbons! \nWe need one more sign though... Liquid water", scale=0.05)
-        self.researchNode.setPos(self.pointLocations[2])
-        self.eventAdvanceFunc['reset']()
-        self.eventDoneFunc['finish']()
-        await self.plotAsync
-        print("Sample 3 Collected")
-
-        # Instructions for the main gameplay loop for the first part of the game
-        self.gameInstance.textTypewriteAnimation(parent=self.transponderFrame, textPos=(-.75, .1, .5), text="Perfect! Liquid water detected! \nWe got a  $500 million grant for our operations but we're gonna burn through it quick \nWe need to keep making discoveries, and now that we see signs of life \nWE NEED TO FIND LIFE", scale=0.05)
-        await Task.pause(10)
-        self.gameInstance.textTypewriteAnimation(parent=self.transponderFrame, textPos=(-.75, .1, .5), text="You have 35 samples to find life \nWith each new sample you'll get 10 million more dollar \nOnce we find life, we can use the extra money for upgrades \nBased on your needs of course", scale=0.05)
-        
-        self.FundsBar = DirectWaitBar(text="Funds:", value=100, pos=(.85, -15, -.7))
-        self.FundsBar['barColor'] = (0, 0, 2, 2)
-        self.FundsBar['text_scale'] = .05
-        self.FundsBar['frameSize'] = (-.35, .35, -.035, .02)
-        self.FundsBar['barRelief']= DGG.SUNKEN
-        
-        async def updateFundsBar(task):
-            self.Funds -= 1_000_000
-            self.FundsBar['value'] = min(100, (self.Funds / 5_000_000))
-            self.FundsBar['text'] = f"Funds: ${self.Funds / 1_000_000:.1f}M"
-            await Task.pause(1)
-            return Task.cont        
-        taskMgr.add(updateFundsBar, "updateFundsBar")
-
-        self.researchNode.setPos(self.pointLocations[3])
-        self.eventAdvanceFunc['reset']()
-        self.eventDoneFunc['finish']()
-        
-        # Loop
-        for i in range(3, 38):
-            await self.plotAsync
-            print(f"Sample {i+1} Collected")
-            self.Funds += 10_000_000
-            self.gameInstance.textTypewriteAnimation(parent=self.transponderFrame, textPos=(-.75, .1, .5), text=f"Sample {i+1} collected! Keep going operator!", scale=0.05)
-            self.researchNode.setPos(self.pointLocations[i])
+            self.gameInstance.textTypewriteAnimation(parent=self.transponderFrame, textPos=(-1.45, .1, .5), text="Amazing! We have analyzed the sample and... Wow! \nWe are detecting high amounts of CH4 (Methane) \nBut it's not enough \nWe've pinged another signature, go ahead and collect a sample!", scale=(0.04, 0.0275))
+            self.researchNode.setPos(self.pointLocations[1])
             self.eventAdvanceFunc['reset']()
             self.eventDoneFunc['finish']()
-        
-        # Clean up and 
-        self.plotChecks[0] = lambda: False  # Disable further checks for this event
-        taskMgr.remove('updateFundsBar')  # Stop the task that checks for conditions to advance the plot
-        self.gameInstance.textTypewriteAnimation(parent=self.transponderFrame, textPos=(-.75, .1, .5), text=f"Incredible! All 35 samples collected! \nWe've detected life signatures in multiple samples \nAnd you have {2} left in your fund! \nWe need to go deeper... Time for Upgrades!", scale=0.05)       
+            await self.plotAsync
+            print("Sample 2 Collected")
+
+        # Third Sample
+            self.gameInstance.textTypewriteAnimation(parent=self.transponderFrame, textPos=(-1.45, .1, .5), text="This is astonishing! \nWe've detected high amounts of Complex Carbons! \nWe need one more sign though... Liquid water", scale=(0.04, 0.0275))
+            self.researchNode.setPos(self.pointLocations[2])
+            self.eventAdvanceFunc['reset']()
+            self.eventDoneFunc['finish']()
+            await self.plotAsync
+            print("Sample 3 Collected")
+
+        # Instructions for the main gameplay loop for the first part of the game
+            self.gameInstance.textTypewriteAnimation(parent=self.transponderFrame, textPos=(-1.45, .1, .5), text="Perfect! Liquid water detected! \nWe got a $500 million grant for our operations \nWe're gonna burn through it quick; We need to keep making discoveries \nNow that we see signs of life... WE NEED TO FIND LIFE", scale=(0.04, 0.0275))
+            await Task.pause(12)
+            self.gameInstance.textTypewriteAnimation(parent=self.transponderFrame, textPos=(-1.45, .1, .5), text="You have 35 samples to find life \nWith each new sample... 10 Million more to the budget \nOnce we find life, we can use the extra money for upgrades \nBased on your needs of course", scale=(0.04, 0.0275))
+            
+            self.FundsBar = DirectWaitBar(text="Funds:", value=100, pos=(.85, -15, -.7))
+            self.FundsBar['barColor'] = (0, 0, 2, 2)
+            self.FundsBar['text_scale'] = .05
+            self.FundsBar['frameSize'] = (-.35, .35, -.035, .02)
+            self.FundsBar['barRelief']= DGG.SUNKEN
+            
+            async def updateFundsBar(task):
+                self.Funds -= 1_000_000
+                self.FundsBar['value'] = min(100, (self.Funds / 5_000_000))
+                self.FundsBar['text'] = f"Funds: ${self.Funds / 1_000_000:.1f}M"
+                await Task.pause(1)
+                return Task.cont        
+            taskMgr.add(updateFundsBar, "updateFundsBar")
+
+            self.researchNode.setPos(self.pointLocations[3])
+            self.eventAdvanceFunc['reset']()
+            self.eventDoneFunc['finish']()
+            
+            # Loop
+            for i in range(3, 38):
+                await self.plotAsync
+                print(f"Sample {i+1} Collected")
+                self.Funds += 10_000_000
+                self.gameInstance.textTypewriteAnimation(parent=self.transponderFrame, textPos=(-1.45, .1, .5), text=f"Sample {i+1} collected! Keep going operator!", scale=(0.04, 0.0275))
+                self.researchNode.setPos(self.pointLocations[i])
+                self.eventAdvanceFunc['reset']()
+                self.eventDoneFunc['finish']()
+            
+            # Clean up and 
+            self.plotChecks[0] = lambda: False  # Disable further checks for this event
+            taskMgr.remove('updateFundsBar')  # Stop the task that checks for conditions to advance the plot
+            self.gameInstance.textTypewriteAnimation(parent=self.transponderFrame, textPos=(-1.45, .1, .5), text=f"Incredible! All 35 samples collected! \nWe've detected life signatures in multiple samples \nAnd you have {self.Funds} left in your fund! \nWe need to go deeper... Time for Upgrades!", scale=(0.04, 0.0275))       
         
         # This concludes the first part of the plot where the player collects samples to find signs of life. 
         # Next, we would transition into the upgrade phase 
+        #self.UpgradeMenu()
 
-        self.UpgradeMenu()
-    def printMenuPos(self):
+    def printPos(self):
         '''
         print('Main Frame Pos:' ,self.upgradeFrame.getPos())
         print('Main Frame Size:', self.upgradeFrame['frameSize'])
@@ -1647,14 +1660,65 @@ class Plot():
         print('Motor Frame Pos:', self.motorUpgradeFrame.getPos())
         print('Motor Frame Size:', self.motorUpgradeFrame['frameSize'])
         '''
-        print(self.upgradeHullButton.getPos())
-        print(self.upgradeBatteryButton.getPos())
-        print(self.upgradeMotorButton.getPos())
+        print(self.upgradeHullDescription.getPos())
+        print(self.upgradeBatteryDescription.getPos())
+        print(self.upgradeMotorDescription.getPos())
+        print(self.hullUpgradeCountEnvelopingFrame.getPos())
+        print(self.exitButton.getPos())
+        '''
         print(self.upgradeHullButton['frameSize'])
         print(self.upgradeBatteryButton['frameSize'])
         print(self.upgradeMotorButton['frameSize'])
+        '''
     def UpgradeMenu(self):
-        self.gameInstance.CameraOperator()
+        self.hullUpgradeCount = 0
+        self.batteryUpgradeCount = 0
+        self.motorUpgradeCount = 0
+        def upgradeHull():
+            if self.gameInstance.MaxHull <= 150:  # Example cap at 150; adjust as needed
+                if self.Funds > round(self.baseUpgradeCost * pow(self.growth, self.hullUpgradeCount)):
+                    self.Funds -= round(self.baseUpgradeCost * pow(self.growth, self.hullUpgradeCount))
+                    self.fundsText.setText(f"Funds: ${self.Funds / 1_000_000:.1f}M")
+                    self.hullUpgradeCount += 1
+                    setattr(self, f'upgradeHullCount{self.hullUpgradeCount}', DirectFrame(parent=self.hullUpgradeCountEnvelopingFrame, frameColor=(0, 1, .5, 1), frameSize=(-0.005, 0.005, -0.0075, 0.0075), pos=(-0.125 + self.hullUpgradeCount * 0.02, 0, 0)))
+                    self.gameInstance.MaxHull += 5  # Increase max hull by 50 (adjust value as needed)
+                    self.gameInstance.HullBar['range'] = self.gameInstance.MaxHull  # Update bar range dynamically
+                    self.gameInstance.PlayerHull = min(self.gameInstance.PlayerHull, self.gameInstance.MaxHull)  # Clamp current hull if needed
+            else:    
+                self.upgradeHullButton['state'] = DGG.DISABLED  # Disable button if max hull is reached
+                if not hasattr(self, 'hullMaxedText'):
+                    self.hullMaxedText = OnscreenText(parent=self.hullUpgradeFrame, text="Max", pos=(.1, -0.0325), fg= (1, 0, 0, 1), scale=0.0175, align=TextNode.ALeft)
+        def upgradeBattery():
+            if self.gameInstance.PowerCapacity <= 150:  # Example cap at 150; adjust as needed
+                if self.Funds > round(self.baseUpgradeCost * pow(self.growth, self.batteryUpgradeCount)):
+                    self.Funds -= round(self.baseUpgradeCost * pow(self.growth, self.batteryUpgradeCount))
+                    self.fundsText.setText(f"Funds: ${self.Funds / 1_000_000:.1f}M")
+                    self.batteryUpgradeCount += 1
+                    setattr(self, f'upgradeBatteryCount{self.batteryUpgradeCount}', DirectFrame(parent=self.batteryUpgradeCountEnvelopingFrame, frameColor=(0, 1, .5, 1), frameSize=(-0.005, 0.005, -0.0075, 0.0075), pos=(-0.125 + self.batteryUpgradeCount * 0.02, 0, 0)))
+                    self.gameInstance.PowerCapacity += 5  # Increase power capacity by 50 (adjust value as needed)
+                    self.gameInstance.PowerBar['range'] = self.gameInstance.PowerCapacity  # Update bar range dynamically
+                    self.gameInstance.PowerValue = min(self.gameInstance.PowerValue, self.gameInstance.PowerCapacity)  # Clamp current power if needed
+            else:
+                self.upgradeBatteryButton['state'] = DGG.DISABLED  # Disable button if max power capacity is reached
+                if not hasattr(self, 'batteryMaxedText'):
+                    self.batteryMaxedText = OnscreenText(parent=self.batteryUpgradeFrame, text="Max", pos=(.1, -0.0325), fg= (1, 0, 0, 1), scale=0.0175, align=TextNode.ALeft)
+        def upgradeMotor():
+            if self.gameInstance.Speed <= 15:  # Example cap at 20; adjust as needed
+                if self.Funds > round(self.baseUpgradeCost * pow(self.growth, self.motorUpgradeCount)):
+                    self.Funds -= round(self.baseUpgradeCost * pow(self.growth, self.motorUpgradeCount))
+                    self.fundsText.setText(f"Funds: ${self.Funds / 1_000_000:.1f}M")
+                    self.motorUpgradeCount += 1
+                    setattr(self, f'upgradeMotorCount{self.motorUpgradeCount}', DirectFrame(parent=self.motorUpgradeCountEnvelopingFrame, frameColor=(0, 1, .5, 1), frameSize=(-0.005, 0.005, -0.0075, 0.0075), pos=(-0.125 + self.motorUpgradeCount * 0.02, 0, 0)))
+                    self.gameInstance.Speed += .5  # Increase speed by .5 (adjust value as needed)
+            else:
+                self.upgradeMotorButton['state'] = DGG.DISABLED  # Disable button if max speed is reached
+                if not hasattr(self, 'motorMaxedText'):
+                    self.motorMaxedText = OnscreenText(parent=self.motorUpgradeFrame, text="Max", pos=(.1, -0.0325), fg= (1, 0, 0, 1), scale=0.0175, align=TextNode.ALeft)
+        def exitUpgradeMenu():
+            self.upgradeFrame.destroy()
+            self.gameInstance.CameraOperator()
+        self.fundsFrame = DirectFrame(frameColor=(.2, .2, .2, 1), frameSize=(-0.35, 0.35, -0.1, 0.1), pos=(1.5, 0, .5), scale=(1,1,1), relief=1)
+        self.fundsText = OnscreenText(parent=self.fundsFrame, text=f"Funds: ${self.Funds / 1_000_000:.1f}M", pos=(0, 0.0), scale=0.075, align=TextNode.ACenter)
         self.upgradeFrame = DirectFrame(frameColor=(.2, .2, .2, 1),
                                         frameSize=(-.8, .8, -.8, .8), 
                                         pos=(0, 0, 0), 
@@ -1662,49 +1726,62 @@ class Plot():
                                         relief=DGG.RIDGE,
                                         borderWidth=(0.05, 0.05)
                                         )
-        self.hullUpgradeFrame = DirectFrame(parent=self.upgradeFrame, frameColor=(.1, .1, .1, 1), frameSize=(-.35, .35, -.1, .1), pos=(0, 0, .5), scale=(2,2,2))
-        self.batteryUpgradeFrame = DirectFrame(parent=self.upgradeFrame, frameColor=(.1, .1, .1, 1), frameSize=(-.35, .35, -.1, .1), pos=(0, 0, 0), scale=(2,2,2))
-        self.motorUpgradeFrame = DirectFrame(parent=self.upgradeFrame, frameColor=(.1, .1, .1, 1), frameSize=(-.35, .35, -.1, .1), pos=(0, 0, -0.5), scale=(2,2,2))
+        self.hullUpgradeFrame = DirectFrame(parent=self.upgradeFrame, frameColor=(.1, .1, .1, 1), frameSize=(-.35, .35, -.1, .1), pos=(0, 0, .5), scale=(2,2,2), enableEdit=False)
+        self.batteryUpgradeFrame = DirectFrame(parent=self.upgradeFrame, frameColor=(.1, .1, .1, 1), frameSize=(-.35, .35, -.1, .1), pos=(0, 0, 0), scale=(2,2,2), enableEdit=False)
+        self.motorUpgradeFrame = DirectFrame(parent=self.upgradeFrame, frameColor=(.1, .1, .1, 1), frameSize=(-.35, .35, -.1, .1), pos=(0, 0, -0.5), scale=(2,2,2), enableEdit=False)
         self.upgradeHullButton = DirectButton(parent=self.hullUpgradeFrame, 
                                               frameColor=(0.5, 0.5, 0.5, 1), 
                                               frameSize=(-0.1, 0.1, -0.03, 0.06), 
-                                              pos=LPoint3f(0, 0, 0), 
+                                              pos=LPoint3f(-.22, 0, -.015), 
                                               hpr=LVecBase3f(0, 0, 0), 
+                                              text_font=self.gameInstance.loader.loadFont('assets/fonts/Hacked_CRT.ttf'),
                                               relief=1, 
                                               scale=LVecBase3f(1, 1, 1), 
-                                              text='Upgrade Hull', 
-                                              text_align=TextNode.A_center, 
-                                              text_scale=(0.075, 0.075), 
-                                              text_pos=(0, 0), 
-                                              text_fg=LVecBase4f(0.8, 0.8, 0.8, 1), 
-                                              text_bg=LVecBase4f(0, 0, 0, 0))
+                                              text_scale=(0.02, 0.02),
+                                              text_pos=(0, 0.02),
+                                              text='Upgrade\nHull', 
+                                              text_align=TextNode.A_center,
+                                              command=upgradeHull
+        )
         self.upgradeBatteryButton = DirectButton(parent=self.batteryUpgradeFrame, 
                                                  frameColor=(0.5, 0.5, 0.5, 1), 
                                                  frameSize=(-0.1, 0.1, -0.03, 0.06), 
-                                                 pos=LPoint3f(0, 0, 0), 
+                                                 pos=LPoint3f(-.22, 0, -.015), 
                                                  hpr=LVecBase3f(0, 0, 0), 
+                                                 text_font=self.gameInstance.loader.loadFont('assets/fonts/Hacked_CRT.ttf'),
                                                  relief=1, 
-                                                 scale=LVecBase3f(1, 1, 1), 
-                                                 text='Upgrade Battery', 
-                                                 text_align=TextNode.A_center, 
-                                                 text_scale=(0.075, 0.075), 
-                                                 text_pos=(0, 0), 
-                                                 text_fg=LVecBase4f(0.8, 0.8, 0.8, 1), 
-                                                 text_bg=LVecBase4f(0, 0, 0, 0))
+                                                 scale=LVecBase3f(1, 1, 1),
+                                                 text_scale=(0.02, 0.02), 
+                                                 text_pos=(0, 0.02),
+                                                 text='Upgrade\nBattery', 
+                                                 command=upgradeBattery
+                                                 )
         self.upgradeMotorButton = DirectButton(parent=self.motorUpgradeFrame, 
                                                frameColor=(0.5, 0.5, 0.5, 1), 
                                                frameSize=(-0.1, 0.1, -0.03, 0.06), 
-                                               pos=LPoint3f(0, 0, 0), 
+                                               pos=LPoint3f(-.22, 0, -.015), 
                                                hpr=LVecBase3f(0, 0, 0), 
-                                               relief=1, 
+                                               text_font=self.gameInstance.loader.loadFont('assets/fonts/Hacked_CRT.ttf'),
+                                               relief=1,
+                                               text_pos=(0, 0.02), 
                                                scale=LVecBase3f(1, 1, 1), 
-                                               text='Upgrade Motor', 
-                                               text_align=TextNode.A_center, 
-                                               text_scale=(0.075, 0.075), 
-                                               text_pos=(0, 0), 
-                                               text_fg=LVecBase4f(0.8, 0.8, 0.8, 1), 
-                                               text_bg=LVecBase4f(0, 0, 0, 0))
-
+                                               text_scale=(0.02, 0.02),
+                                               text='Upgrade\nMotor', 
+                                               command=upgradeMotor
+                                               )
+        self.upgradeHullDescription = OnscreenText(parent=self.hullUpgradeFrame, text="+5% Durability", pos=(-.1, .03), scale=0.02, align=TextNode.ALeft, bg=(.7, .7, .7, 1))
+        self.upgradeBatteryDescription = OnscreenText(parent=self.batteryUpgradeFrame, text="+5% Power Capacity", pos=(-.1, .03), scale=0.02, align=TextNode.ALeft, bg=(.7, .7, .7, 1))
+        self.upgradeMotorDescription = OnscreenText(parent=self.motorUpgradeFrame, text="+5% Speed", pos=(-.1, .03), scale=0.02, align=TextNode.ALeft, bg=(.7, .7, .7, 1))
+        self.hullUpgradeIcon = DirectFrame(parent=self.hullUpgradeFrame, frameColor=(0, 0, 0, 0), frameSize=(-0.03, 0.03, -0.03, 0.03), pos=LPoint3f(.25, 0, 0), hpr=LVecBase3f(0, 0, 0), relief=1, image='assets/images/hullUpgradeIcon.png', image_scale=(0.08, 0.08, 0.08))
+        self.batteryUpgradeIcon = DirectFrame(parent=self.batteryUpgradeFrame, frameColor=(0, 0, 0, 0), frameSize=(-0.03, 0.03, -0.03, 0.03), pos=LPoint3f(.25, 0, 0), hpr=LVecBase3f(0, 0, 0), relief=1, image='assets/images/batteryUpgradeIcon.png', image_scale=(0.08, 0.08, 0.08))
+        self.motorUpgradeIcon = DirectFrame(parent=self.motorUpgradeFrame, frameColor=(0, 0, 0, 0), frameSize=(-0.03, 0.03, -0.03, 0.03), pos=LPoint3f(.25, 0, 0), hpr=LVecBase3f(0, 0, 0), relief=1, image='assets/images/motorUpgradeIcon.png', image_scale=(0.08, 0.08, 0.08))
+        self.hullUpgradeIcon.setTransparency(TransparencyAttrib.MAlpha)
+        self.batteryUpgradeIcon.setTransparency(TransparencyAttrib.MAlpha)
+        self.motorUpgradeIcon.setTransparency(TransparencyAttrib.MAlpha)
+        self.hullUpgradeCountEnvelopingFrame = DirectFrame(parent=self.hullUpgradeFrame, frameColor=(.4, .4, .4, 1), frameSize=(-0.12, 0.12, -0.015, 0.015), pos=LPoint3f(0.018, 0, -.0275), hpr=LVecBase3f(0, 0, 0), relief=1)
+        self.batteryUpgradeCountEnvelopingFrame = DirectFrame(parent=self.batteryUpgradeFrame, frameColor=(.4, .4, .4, 1), frameSize=(-0.12, 0.12, -0.015, 0.015), pos=LPoint3f(0.018, 0, -.0275), hpr=LVecBase3f(0, 0, 0), relief=1)
+        self.motorUpgradeCountEnvelopingFrame = DirectFrame(parent=self.motorUpgradeFrame, frameColor=(.4, .4, .4, 1), frameSize=(-0.12, 0.12, -0.015, 0.015), pos=LPoint3f(0.018, 0, -.0275), hpr=LVecBase3f(0, 0, 0), relief=1)
+        self.exitButton = DirectButton(parent=self.upgradeFrame, frameColor=(0.5, 0.5, 0.5, 1), frameSize=(-0.2, 0.2, -0.09, 0.09), pos=LPoint3f(1.24, 0, -.15), hpr=LVecBase3f(0, 0, 0), text_font=self.gameInstance.loader.loadFont('assets/fonts/Hacked_CRT.ttf'), text_align=TextNode.ACenter ,relief=1, scale=LVecBase3f(1, 1, 1), text_pos=(0,-0.02), text_fg=(1,0,0,1), text_scale=(0.07, 0.07), text='Exit', command=exitUpgradeMenu)
     async def conditionBasedAdvancer(self, task):
         await Task.pause(0.5)  # Small delay to prevent tight looping
 
@@ -1718,6 +1795,7 @@ class Plot():
         return Task.cont
     def __init__(self, gameInstance):
         self.gameInstance = gameInstance
+        self.testing = False
         self.plotAsync = AsyncFuture()
         self.advanceAsync = AsyncFuture()
         self.eventAdvanceFunc = {'finish': lambda: self.plotAsync.set_result(None), 'reset': lambda: setattr(self, 'plotAsync', AsyncFuture())}
@@ -1771,14 +1849,17 @@ class Plot():
                 LPoint3f(148.71176, 112.771286, 155.41626),
                 LPoint3f(238.17663, 38.95241, 129.26014)]
         self.Funds = 500_000_000  # Starting funds
-        
+        self.baseUpgradeCost = 4_500_000  # Base cost for upgrades
+        self.growth = 1.33  # Growth factor for upgrade costs
+
         # Add the tasks to the task manager
         taskMgr.add(self.conditionBasedAdvancer, "ConditionBasedAdvancer") 
         taskMgr.add(self.plotLine, "PlotLine")
 
         # Debugging
         self.gameInstance.accept('u', self.UpgradeMenu)
-        self.gameInstance.accept('h', self.printMenuPos)
+        self.gameInstance.accept('h', self.printPos)
+        self.gameInstance.accept('t', self.testingActivate)
 
 game = Game(Plot)
 base.run()
