@@ -83,6 +83,7 @@ keeps 3-d aspect, and keep in mind also can make it where the drill doesnt even 
 clear windows, figure that out to make illusion of moving, and then one big event about electricity
 
 lastly, pour time into last animation for boss fight
+boss attacks only when close, and used head to try and eat, every 2 seconds if close
 attacks are electrical shocks, and in thrid person stationary view
 Drone fixed basically,
 then final scene (rover stands over dead leviathon, fades to surface, and uses an energy blast to scram skedaddle), end game
