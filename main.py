@@ -370,6 +370,7 @@ class Game(ShowBase):
     PlayerHull = 100
     MaxHull = 100
     PowerCapacity = 100
+    PowerValue = 100
     Speed = 10
     sunDirection = -.2
     cycleOscillation = {'dawnOrDusk' : 'down', 'notQiyamah': .45}
@@ -411,6 +412,10 @@ class Game(ShowBase):
         for models in self.currentModels:
             models.setShaderInput('light0_direction', (self.cycleOscillation['notQiyamah'], self.sunDirection, 0))
     def PlayerHUD(self):
+        delattr(self, 'stopHullBarUpdate') if hasattr(self, 'stopHullBarUpdate') else None
+        delattr(self, 'stopPowerBarUpdate') if hasattr(self, 'stopPowerBarUpdate') else None
+        delattr(self, 'stopRover2PersonUpdate') if hasattr(self, 'stopRover2PersonUpdate') else None
+        delattr(self, 'transponderHidden') if hasattr(self, 'transponderHidden') else None
         self.HUDMainFrame = DirectFrame(frameColor=(0.6, 0.6, 0.6, 1),
                                         frameSize=(-1.25, 1.25, -0.15, 0.15),
                                         pos=(0, 0, -.75))
@@ -419,20 +424,21 @@ class Game(ShowBase):
                                              pos=(0, 0, -.75))
         
         self.crosshairDot = DirectFrame(frameColor=(1, 0, 0, 1), frameSize=(-0.0025, 0.0025, -0.0025, 0.0025), pos=(0, 0, 0))
+
+        self.pauseText = OnscreenText("To Pause press P", pos=(-2.5, 0.95), scale=0.05, fg=(1, 1, 1, 1), align=TextNode.ACenter)
+        self.accept('p', self.PauseMenu)
         
         self.HullBar = DirectWaitBar(text="Hull", value=self.PlayerHull, range=self.MaxHull, pos=(-.85, -15, -.7))
         self.HullBar['barColor'] = (0, 2, 0, 2)
         self.HullBar['text_scale'] = .05
         self.HullBar['frameSize'] = (-.35, .35, -.035, .02)
         self.HullBar['barRelief']= DGG.SUNKEN
-        self.HullValue = 100
 
         self.PowerBar = DirectWaitBar(text="Power", value=100, range=self.PowerCapacity, pos=(-.85, -1, -.8))
         self.PowerBar['barColor'] = (0, .5, 2, 2)
         self.PowerBar['text_scale'] = .05
         self.PowerBar['frameSize'] = (-.35, .35, -.035, .02)
         self.PowerBar['barRelief']= DGG.SUNKEN
-        self.PowerValue = 100
 
         self.cm.setFrame(-.125, .125, -0.125, 0.125)
         self.thirdPersonCard = self.rover2PersonFrame.attachNewNode(self.cm.generate())
@@ -977,15 +983,27 @@ class Game(ShowBase):
             command=close_menu,
         )
         self.btnExit.setTransparency(TransparencyAttrib.MAlpha)
-    def clearGUI(self):
+    def clearHUD(self):
         if hasattr(self, 'HullBar'):
-            self.HullBar.destroy()
+            self.HullBar.hide()
+            setattr(self, 'stopHullBarUpdate', True)
         if hasattr(self, 'PowerBar'):
-            self.PowerBar.destroy()
+            self.PowerBar.hide()
+            setattr(self, 'stopPowerBarUpdate', True)
         if hasattr(self, 'HUDMainFrame'):
-            self.HUDMainFrame.destroy()
+            self.HUDMainFrame.hide()
+            delattr(self, 'HUDMainFrame')
         if hasattr(self, 'rover2PersonFrame'):
-            self.rover2PersonFrame.destroy()
+            self.rover2PersonFrame.hide()
+            setattr(self, 'stopRover2PersonUpdate', True)
+        if hasattr(self, 'pauseText'):
+            self.pauseText.hide()
+            delattr(self, 'pauseText')
+        if hasattr(self.Plot, 'transponderFrame'):
+            self.Plot.transponderFrame.hide()
+            setattr(self, 'transponderHidden', True)
+        if hasattr(self.Plot, 'FundsBar'):
+            self.Plot.FundsBar.destroy()
     def MainMenu(self):
         self.inaMenu = True
         self.mainMenuBackground = OnscreenImage(image='assets/images/mainMenuBackground.png', pos=(0, 0, 0), scale=(1.5, 1.5, 1.5))
@@ -1105,7 +1123,7 @@ class Game(ShowBase):
             command=Resume,
             extraArgs=[self],
         )
-    # This function is called when the mouse is clicked, calling a function based on what is clicked in game
+#This function is called when the mouse is clicked, calling a function based on what is clicked in game    
     async def click(self, task):
         # Perform collision traversal
         self.cTrav.traverse(self.render)
@@ -1279,7 +1297,7 @@ class Game(ShowBase):
 
     # The Update cycle, this function should be used to update positions and anything that needs to be updated
     def Update(self, task):
-        if hasattr(self, 'thirdPersonCard') and hasattr(self, 'roverModel'):
+        if hasattr(self, 'thirdPersonCard') and hasattr(self, 'roverModel') and not hasattr(self, 'stopRover2PersonUpdate'):
             self.cm.setUvRange(self.thirdPersonTexture)
             self.thirdPersonCard.setTexture(self.thirdPersonTexture)
             self.thirdPersonCam.lookAt(self.roverModel)
@@ -1311,9 +1329,10 @@ class Game(ShowBase):
         
         self.thirdPersonCam.setPos(ThirdPersonCam_Position)
 
-        self.worldCollisionModel.setPos(0, 0, 0)
+        if self.worldCollisionModel.getParent() == self.render:
+            self.worldCollisionModel.setPos(0, 0, 0)
         
-        if hasattr(self, 'self.HullBar'):
+        if not hasattr(self, 'stopHullBarUpdate') and hasattr(self, 'HullBar'):
             self.PlayerHull = min(self.PlayerHull, self.MaxHull)
             self.HullBar['value'] = self.PlayerHull
 
@@ -1321,7 +1340,7 @@ class Game(ShowBase):
             self._player_died = None
             self.Death()
         
-        if hasattr(self, "PowerBar"):
+        if not hasattr(self, "stopPowerBarUpdate") and hasattr(self, 'PowerBar'):
             self.PowerValue = min(self.PowerValue, self.PowerCapacity)
             self.PowerValue -= globalClock.getDt() * .5            
             self.PowerBar['value'] = self.PowerValue
@@ -1441,6 +1460,11 @@ class Game(ShowBase):
         self.MainMenu()
 
 class Plot():
+    def manualPlotAdvance(self):
+        self.eventAdvanceFunc['finish']()
+        self.eventAdvanceFunc['reset']()
+        self.eventDoneFunc['finish']()
+        self.eventDoneFunc['reset']()
     def testingActivate(self):
         self.testing = True
         pass
@@ -1543,10 +1567,6 @@ class Plot():
         
         # Add HUD
         self.gameInstance.PlayerHUD()
-        
-        # Add a Pause Menu
-        pausetext = OnscreenText("To Pause press P", pos=(-2.5, 0.95), scale=0.05, fg=(1, 1, 1, 1), align=TextNode.ACenter)
-        self.gameInstance.accept('p', self.gameInstance.PauseMenu)
 
         # initialize the camera controller
         self.gameInstance.CameraOperator()
@@ -1623,7 +1643,9 @@ class Plot():
                 self.FundsBar['value'] = min(100, (self.Funds / 5_000_000))
                 self.FundsBar['text'] = f"Funds: ${self.Funds / 1_000_000:.1f}M"
                 await Task.pause(1)
-                return Task.cont        
+                if hasattr(self, "openedUpgradeMenu"):
+                    return Task.done
+                return task.cont        
             taskMgr.add(updateFundsBar, "updateFundsBar")
 
             self.researchNode.setPos(self.pointLocations[3])
@@ -1647,8 +1669,79 @@ class Plot():
         
         # This concludes the first part of the plot where the player collects samples to find signs of life. 
         # Next, we would transition into the upgrade phase 
-        #self.UpgradeMenu()
+        if not self.testing:
+            self.gameInstance.CameraOperator()
+            self.gameInstance.clearHUD()
+            taskMgr.remove('updateFundsBar')
+            self.UpgradeMenu()
+            await self.plotAsync
+            self.eventAdvanceFunc['reset']()
+            self.eventDoneFunc['finish']()
+            self.plotChecks[1] = lambda: False  # Disable further checks for this event
 
+        #Transformation scene
+        
+        self.gameInstance.setBackgroundColor(.9, .85, .8, 1)
+        self.gameInstance.cam.node().getLens().setFocalLength(1)
+        self.gameInstance.world_bg.removeNode()
+        self.gameInstance.roverModel.removeNode()
+        self.gameInstance.worldVisibleModel.hide()
+        self.gameInstance.worldCollisionModel.removeNode()
+        self.gameInstance.transitions.fadeOut(.5)
+        await Task.pause(1)
+        self.roverSubBody = self.gameInstance.loader.loadModel("assets/models/roverSubBody.glb")
+        self.roverSubBody.setScale(2)
+        self.roverSubBody.setPos(0, 0, 0)
+        self.roverSubBody.reparentTo(self.gameInstance.render)
+        self.gameInstance.camera.setPos(20, -10, -15)
+        self.gameInstance.camera.lookAt(self.roverSubBody)
+        self.gameInstance.camera.setP(self.gameInstance.camera.getP() + 5)
+        await Task.pause(1)
+        self.gameInstance.transitions.fadeIn(1)
+        await Task.pause(1)
+        self.gameInstance.transitions.fadeOut(1)
+        await Task.pause(1)
+        self.rightJetModel = self.gameInstance.loader.loadModel("assets/models/rightJet.glb")
+        self.rightJetModel.setScale(2)
+        self.rightJetModel.setPos(0, -2.2, 1.8)
+        self.rightJetModel.setHpr(180, 0, 0)
+        self.rightJetModel.reparentTo(self.gameInstance.render)
+        self.gameInstance.camera.setPos(-20, 20, 15)
+        self.gameInstance.camera.lookAt(self.roverSubBody)
+        await Task.pause(1)
+        self.gameInstance.transitions.fadeIn(1)
+        await Task.pause(1)
+        self.gameInstance.transitions.fadeOut(1)
+        await Task.pause(1)
+        self.leftJetModel = self.gameInstance.loader.loadModel("assets/models/leftJet.glb")
+        self.leftJetModel.setScale(2)
+        self.leftJetModel.setPos(0, 2.2, 1.8)
+        self.leftJetModel.setHpr(0, 0, 0)
+        self.leftJetModel.reparentTo(self.gameInstance.render)
+        self.gameInstance.camera.setPos(20, 20, 15)
+        self.gameInstance.camera.lookAt(self.roverSubBody)
+        await Task.pause(1)
+        self.gameInstance.transitions.fadeIn(1)
+        await Task.pause(1)
+        self.gameInstance.transitions.fadeOut(1)
+        await Task.pause(1)
+        self.roverSubBody.removeNode()
+        self.rightJetModel.removeNode()
+        self.leftJetModel.removeNode()
+        self.roverAquaticModel = self.gameInstance.loader.loadModel("assets/models/aquaticRover.glb")
+        self.roverAquaticModel.setScale(2)
+        self.roverAquaticModel.setPos(0, 0, -5)
+        self.roverAquaticModel.reparentTo(self.gameInstance.render)
+        await Task.pause(1)
+        self.gameInstance.transitions.fadeIn(1)
+        self.gameInstance.camera.setPos(5, 0, 0)
+        self.gameInstance.cam.node().getLens().setFocalLength(0.15)
+        self.gameInstance.camera.lookAt(LPoint3f(0, 0, 0))
+        self.roverAquaticModel.hprInterval(3, LVecBase3f(3600, 0, 0)).start()
+        self.roverAquaticModel.posInterval(1, LPoint3f(0, 0, 0)).start()
+        transitionText = OnscreenText(text="Upgrades Complete! \nTime to explore the depths of Europa! \n 2 more leaps left", pos=(0, .75), scale=0.1, fg=(1, 0, 0, 1), font=self.gameInstance.loader.loadFont('assets/fonts/propaganda.ttf') ,align=TextNode.ACenter)
+        await Task.pause(3)
+        transitionText.destroy()
     def printPos(self):
         '''
         print('Main Frame Pos:' ,self.upgradeFrame.getPos())
@@ -1671,6 +1764,7 @@ class Plot():
         print(self.upgradeMotorButton['frameSize'])
         '''
     def UpgradeMenu(self):
+        self.openedUpgradeMenu = True
         self.hullUpgradeCount = 0
         self.batteryUpgradeCount = 0
         self.motorUpgradeCount = 0
@@ -1716,7 +1810,9 @@ class Plot():
                     self.motorMaxedText = OnscreenText(parent=self.motorUpgradeFrame, text="Max", pos=(.1, -0.0325), fg= (1, 0, 0, 1), scale=0.0175, align=TextNode.ALeft)
         def exitUpgradeMenu():
             self.upgradeFrame.destroy()
-            self.gameInstance.CameraOperator()
+            self.fundsFrame.destroy()
+            self.exitButton.destroy()
+            self.closedUpgradeMenu = True
         self.fundsFrame = DirectFrame(frameColor=(.2, .2, .2, 1), frameSize=(-0.35, 0.35, -0.1, 0.1), pos=(1.5, 0, .5), scale=(1,1,1), relief=1)
         self.fundsText = OnscreenText(parent=self.fundsFrame, text=f"Funds: ${self.Funds / 1_000_000:.1f}M", pos=(0, 0.0), scale=0.075, align=TextNode.ACenter)
         self.upgradeFrame = DirectFrame(frameColor=(.2, .2, .2, 1),
@@ -1804,7 +1900,7 @@ class Plot():
         self.plotChecks = [
             # Check 0: research goal achieved — only true when gameInstance has hit_name and researchCollisionNode exists and names match
             lambda: hasattr(self.gameInstance, 'hit_name') and hasattr(self, 'researchCollisionNode') and (self.researchCollisionNode.getName() == self.gameInstance.hit_name),
-            lambda: False
+            lambda: hasattr(self, 'closedUpgradeMenu'),  # Check 1: Closed Upgrade Menu — only true when the upgrade menu is closed
         ]
         self.eventCounter = len(self.plotChecks)
         self.plotEvents = {"researchGoalAchieved": self.plotChecks[0]}
@@ -1860,6 +1956,7 @@ class Plot():
         self.gameInstance.accept('u', self.UpgradeMenu)
         self.gameInstance.accept('h', self.printPos)
         self.gameInstance.accept('t', self.testingActivate)
+        self.gameInstance.accept('y', self.manualPlotAdvance)
 
 game = Game(Plot)
 base.run()

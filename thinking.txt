@@ -58,3 +58,31 @@ await event1start
 #whatever
 event1Done.set_result
 await event2start
+
+
+welcome back
+second part of the game will be like this
+fade in 
+spawn in blue ocean
+transponder tells us what to do
+3 types of enemies
+mountain peak at bottom of ocean
+radar to help indicate to player where to Go
+meaning you need to add a distance calculator and add it to update
+
+First of all design 3d models. small fish, big fish, massive fish
+1 hit, 2 hit, 4 hit
+hit animations like minecraft
+
+
+Just thinking about third part
+we can make it a maintain gameplay, on the back of a drill machine, cause why not
+random hits, random fixing.
+takes 3 minutes
+keeps 3-d aspect, and keep in mind also can make it where the drill doesnt even move :)
+clear windows, figure that out to make illusion of moving, and then one big event about electricity
+
+lastly, pour time into last animation for boss fight
+attacks are electrical shocks, and in thrid person stationary view
+Drone fixed basically,
+then final scene (rover stands over dead leviathon, fades to surface, and uses an energy blast to scram skedaddle), end game
