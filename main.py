@@ -217,13 +217,13 @@ class CameraControllerBehaviour(DirectObject):
         self._showbase.camera.setPos(self.cam_pos)
 
         return Task.cont
-
 class EnemyController():
-    def __init__(self, showbase=None):
+    def __init__(self,  Game: 'Game', showbase=None):
         self.showbase = base if showbase is None else showbase
         self.EnemyModelDict = {}
         self.EnemyAIDotDict = {}
         self.EnemyCollisionDict = {}
+        self.EnemyColliderPathDict = {}
         self.EnemyAICharDict = {}
         self.EnemyAIBehaviourDict = {}
         self.EnemyHealthDict = {}
@@ -231,6 +231,7 @@ class EnemyController():
         self.EnemyDict = {'model':self.EnemyModelDict,
                           'ai_dot':self.EnemyAIDotDict,
                           'collision':self.EnemyCollisionDict,
+                          'collision_path':self.EnemyColliderPathDict,
                           'ai_char':self.EnemyAICharDict,
                           'ai_behaviour':self.EnemyAIBehaviourDict,
                           'health':self.EnemyHealthDict,
@@ -239,6 +240,11 @@ class EnemyController():
         self.EnemyCollisionHandler = CollisionHandlerEvent()
         self.EnemyCollisionHandler.addInPattern('into-camera')
         self.showbase.accept("into-camera",self.DamagePlayer)
+
+        self.gameInstance = Game
+        
+        if hasattr(self.gameInstance, 'levelDone'):
+            delattr(self.gameInstance, 'levelDone')
 
         #Because it will spam message in update
         self.Messagesent = False
@@ -262,26 +268,27 @@ class EnemyController():
                     print('Break')
                     break
                 # Set up models and make them loop animations
+                
                 self.EnemyModelDict['enemy' + str(j)] = Actor(modelpath, extraAnims if extraAnims is not None else None)
                 self.EnemyModelDict['enemy' + str(j)].loop(self.EnemyModelDict['enemy' + str(j)].getAnimNames()[0])
                 self.EnemyModelDict['enemy' + str(j)].reparentTo(self.showbase.render)
-                self.EnemyModelDict['enemy' + str(j)].setPos(random.randint(-100, 100), random.randint(-100, 100), height)
+                self.EnemyModelDict['enemy' + str(j)].setPos(random.randint(-100, 100), random.randint(-100, 100), random.randint(height[0], height[1]) if isinstance(height, tuple) else height)
                 
                 # Set up shaders, pretty custom
-                game.shader(EnterNode=self.EnemyModelDict['enemy' + str(j)])
+
 
                 # We need to use a place holder model because the model will point at the user, so we just set position of the actual model
                 self.EnemyAIDotDict['enemy' + str(j)] = self.showbase.loader.loadModel("assets/models/aidotupdater.bam")
                 self.EnemyAIDotDict['enemy' + str(j)].reparentTo(self.showbase.render)
-                self.EnemyAIDotDict['enemy' + str(j)].setPos(random.randint(-100, 100), random.randint(-100, 100), height)
+                self.EnemyAIDotDict['enemy' + str(j)].setPos(random.randint(-100, 100), random.randint(-100, 100), random.randint(height[0], height[1]) if isinstance(height, tuple) else height)
                 
                 # Collision
                 self.EnemyCollisionDict['enemy' + str(j)] = CollisionNode('enemy' + str(j))
                 self.EnemyCollisionDict['enemy' + str(j)].addSolid(CollisionBox(LPoint3f(2, 0, 9), 4,3,12))
-                self.EnemyColliderPath = self.EnemyModelDict['enemy' + str(j)].attachNewNode(self.EnemyCollisionDict['enemy' + str(j)])
+                self.EnemyColliderPathDict['enemy' + str(j)] = self.EnemyModelDict['enemy' + str(j)].attachNewNode(self.EnemyCollisionDict['enemy' + str(j)])
 
                 # AI
-                self.EnemyAICharDict['enemy' + str(j)] = AICharacter('enemy' + str(j), self.EnemyAIDotDict['enemy' + str(j)], 100, .05, 5)
+                self.EnemyAICharDict['enemy' + str(j)] = AICharacter('enemy' + str(j), self.EnemyAIDotDict['enemy' + str(j)], 10, 5, 5)
                 self.EnemyAIWorld.addAiChar(self.EnemyAICharDict['enemy' + str(j)])
                 self.EnemyAIBehaviourDict['enemy' + str(j)] = self.EnemyAICharDict['enemy' + str(j)].getAiBehaviors()
                 self.EnemyAIBehaviourDict['enemy' + str(j)].pursue(self.showbase.camera)
@@ -289,33 +296,33 @@ class EnemyController():
                 self.EnemyHealthDict['enemy' + str(j)] = health
 
                 # Add collisions
-                self.showbase.cTrav.addCollider(self.EnemyColliderPath, self.EnemyCollisionHandler)
-                game.pusher.addCollider(self.EnemyColliderPath, self.EnemyModelDict['enemy' + str(j)])
-
-                print("Enemy " + str(j) + " spawned")
+                self.showbase.cTrav.addCollider(self.EnemyColliderPathDict['enemy' + str(j)], self.EnemyCollisionHandler)
+                self.gameInstance.pusher.addCollider(self.EnemyColliderPathDict['enemy' + str(j)], self.EnemyModelDict['enemy' + str(j)])
             if self.waveCount > i:
                 continue
             else:
                 await self.waveMethod
-                print("Wave " + str(i+2) + " done")
                 self.waveMethod = AsyncFuture()
                 self.WaveCounttext.setText("Wave: " + str(i+2))
                 self.waveCount += 1
                 self.Messagesent = False
                 self.num += changePerWave
+        self.destroy()
+        self.gameInstance.levelDone = None
     def DamagePlayer(self, collision='nothing'):
         for i in range(len(self.EnemyDict['model'])+1):
             if 'enemy' + str(i) in str(collision) and 'camera' in str(collision):
-                Game.PlayerHealth -= 1
+                self.gameInstance.PlayerHull -= 1
     def EnemyHit(self, enemy):
-        self.EnemyDict['health'][enemy.getName()] -= 1
-        AnimControl = self.EnemyDict['model'][enemy.getName()].getAnimControl('hit')
-        if AnimControl.isPlaying():
-            return None
-        else:
-            AnimControl.setPlayRate(.5)
-            self.EnemyDict['ai_behaviour'][enemy.getName()].pauseAi('all')
-            self.EnemyDict['model'][enemy.getName()].play('hit')
+        if not self.EnemyDict['model'][enemy.getName()].isEmpty():
+            self.EnemyDict['health'][enemy.getName()] -= 1
+            AnimControl = self.EnemyDict['model'][enemy.getName()].getAnimControl('hit')
+            if AnimControl.isPlaying():
+                return None
+            else:
+                AnimControl.setPlayRate(.5)
+                self.EnemyDict['ai_behaviour'][enemy.getName()].pauseAi('all')
+                self.EnemyDict['model'][enemy.getName()].play('hit')
     def MainUpdate(self):
         self.EnemyAIWorld.update()
         for enemy, aidot in zip(self.EnemyDict['model'].values(), self.EnemyDict['ai_dot'].values()):
@@ -332,6 +339,8 @@ class EnemyController():
                 self.EnemyDict['ai_dot'][key].removeNode()
                 self.EnemyAIWorld.removeAiChar(key)
                 self.EnemyDict['ai_behaviour'][key].removeAi(key)
+                self.gameInstance.cTrav.removeCollider(self.EnemyDict['model'][key])
+                self.gameInstance.pusher.removeCollider(self.EnemyDict['collision_path'][key])
                 del self.EnemyDict['model'][key]
                 del self.EnemyDict['ai_dot'][key]
                 del self.EnemyDict['collision'][key]
@@ -340,13 +349,13 @@ class EnemyController():
                 del self.EnemyDict['health'][key]
                 self.EnemyCount += 1
         
-        if self.EnemyDict['model'] == {} and not self.Messagesent:
+        if hasattr(self, 'waveMethod') and self.EnemyDict['model'] == {} and not self.Messagesent:
             self.Messagesent = True
             self.waveMethod.set_result(None)
         
         for enemy in list(self.EnemyDict['model'].values()):
             key = list(self.EnemyDict['model'].keys())[list(self.EnemyDict['model'].values()).index(enemy)]
-            if not enemy.getAnimControl('hit').isPlaying() and self.EnemyDict['ai_behaviour'][key].behaviorStatus('pursue') == 'paused':
+            if not enemy.isEmpty() and not enemy.getAnimControl('hit').isPlaying() and self.EnemyDict['ai_behaviour'][key].behaviorStatus('pursue') == 'paused':
                 self.EnemyDict['ai_behaviour'][key].resumeAi('all')
                 enemy.loop('Walk')
     def destroy(self, KeepAI=False):
@@ -381,11 +390,15 @@ class Game(ShowBase):
 #            'space':"up",
 #            'e':"down"
             }
+    def enemies(self, fish, number, height, health):
+        self.fishyController = EnemyController(Game=self)
+        fishType = ({1:"small", 2:"big", 3:'biggest'}).get(fish)
+        taskMgr.add(self.fishyController.setup(f"assets/models/{fishType}Fish.bam", {"hit":f"assets/models/{fishType}Fish-hit.bam"}, number, height, health, waves=10, changePerWave=2,))
     def printPos(self):
         print(self.camera.getPos())
     def textTypewriteAnimation(self, parent, textPos, text, scale = 0.07, interval=0.05):
         textSplit = list(text)
-        textNode = OnscreenText(parent=parent, text='', pos=textPos, scale=scale, fg=(0,1,0,1), align=TextNode.ALeft, font=self.loader.loadFont('assets/fonts/Hacked_CRT.ttf'))
+        textNode = OnscreenText(parent=parent, text='', pos=textPos, scale=scale, fg=(0,1,0,1), align=TextNode.ALeft, font=self.transmissionFont)
         def cleanup(task):
             textNode.destroy()
         async def typewrite():
@@ -424,6 +437,14 @@ class Game(ShowBase):
                                              pos=(0, 0, -.75))
         
         self.crosshairDot = DirectFrame(frameColor=(1, 0, 0, 1), frameSize=(-0.0025, 0.0025, -0.0025, 0.0025), pos=(0, 0, 0))
+
+        self.transponderFrame = DirectFrame(frameColor=(.2, .2, .2, 1),
+                                        frameSize=(-1.5, 1.5, -.2, .2), 
+                                        pos=(0, 0, .75), 
+                                        scale=(1, 1, 1), 
+                                        relief=DGG.RIDGE,
+                                        borderWidth=(0.05, 0.05)
+                                        )
 
         self.pauseText = OnscreenText("To Pause press P", pos=(-2.5, 0.95), scale=0.05, fg=(1, 1, 1, 1), align=TextNode.ACenter)
         self.accept('p', self.PauseMenu)
@@ -521,19 +542,34 @@ class Game(ShowBase):
         # Create a quene to store the collisions and add the CollisionRay to the CollisionTraverser
         self.collision_queue = CollisionHandlerQueue()
         self.cTrav.addCollider(self.ray_path, self.collision_queue)
-        taskMgr.add(self.click, "clickTask")
-
-        #self.ballDown = True
-    def MouseUp(self):
-        taskMgr.remove("clickTask")
-        if hasattr(self, 'hit_name'):
-            delattr(self, 'hit_name')
+        # Perform collision traversal
+        self.cTrav.traverse(self.render)
+        #print(self.ball.getPos())
+        try:
+            # Process collisions
+            num_collisions = self.collision_queue.getNumEntries()
+            if num_collisions > 1:
+                self.collision_queue.sortEntries()
+                entry = self.collision_queue.getEntry(1)  # Get the closest collision
+                self.hit_name = (entry.getIntoNode()).getName()
+                # Check if the hit node is the model that is supposed to be clicked using something like this:
+                if hasattr(self, 'fishyController'):
+                    for enemy in list(self.fishyController.EnemyDict['collision'].values()):
+                        if self.hit_name == enemy.getName():
+                            print(f"Hit enemy: {self.hit_name}")
+                            self.fishyController.EnemyHit(enemy)
+        except AssertionError as e:
+            print("AssertionError occurred during collision processing.")
+            print(e)
+        except KeyError as e:
+            print("KeyError occurred during collision processing.")
+            pass
         if hasattr(self, 'ray_path'):
             self.cTrav.removeCollider(self.ray_path)  # Remove collider from traverser
             self.ray_path.removeNode()  # Safely remove the ray
             self.collision_queue.clearEntries()
-            self.hit_name = ''
         #self.ballDown = False
+        #self.ballDown = True        
     def SaveProgress(self, reset=False):
         if reset:
             self.save_file = open("save.txt", "w")
@@ -1000,7 +1036,7 @@ class Game(ShowBase):
             self.pauseText.hide()
             delattr(self, 'pauseText')
         if hasattr(self.Plot, 'transponderFrame'):
-            self.Plot.transponderFrame.hide()
+            self.transponderFrame.hide()
             setattr(self, 'transponderHidden', True)
         if hasattr(self.Plot, 'FundsBar'):
             self.Plot.FundsBar.destroy()
@@ -1124,33 +1160,11 @@ class Game(ShowBase):
             extraArgs=[self],
         )
 #This function is called when the mouse is clicked, calling a function based on what is clicked in game    
-    async def click(self, task):
-        # Perform collision traversal
-        self.cTrav.traverse(self.render)
-        #print(self.ball.getPos())
-        try:
-            # Process collisions
-            num_collisions = self.collision_queue.getNumEntries()
-            if num_collisions > 1:
-                self.collision_queue.sortEntries()
-                entry = self.collision_queue.getEntry(1)  # Get the closest collision
-                self.hit_name = (entry.getIntoNode()).getName()
-                # Check if the hit node is the model that is supposed to be clicked using something like this:
-#                for enemy in list(self.enemy.EnemyDict['collision'].values()):
-#                    if hit_node.getName() == enemy.getName():
-#                        self.enemyController.EnemyHit(enemy)
-#                        await Task.pause(.2)
-        except AssertionError as e:
-            print("AssertionError occurred during collision processing.")
-            print(e)
-        except KeyError as e:
-            print("KeyError occurred during collision processing.")
-            pass
-        return Task.cont
     def shader(self, nodes = None, EnterNode = None):
         self.currentModels = []
         if not hasattr(self, 'Shader_setup'):
             self.Shader_setup = None
+            print(PandaSystem.getPlatform())
             if PandaSystem.getPlatform() == 'win_amd64' or PandaSystem.getPlatform() == 'osx_aarch64':
                 shaders = [f"{os.path.dirname(__file__)}/assets/shaders/Shader.vert", f"{os.path.dirname(__file__)}/assets/shaders/Shader.frag"]
                 patchedShaders = []
@@ -1165,6 +1179,7 @@ class Game(ShowBase):
                         patchedShaders.append(code)
                 self.Shader = Shader.make(Shader.SL_GLSL, patchedShaders[0], patchedShaders[1])
             else:
+                print("Using original shaders")
                 self.Shader = Shader.load(Shader.SL_GLSL, "assets/shaders/Shader.vert", "assets/shaders/Shader.frag")
             shadow_buffer = self.win.make_texture_buffer("ShadowBuffer", 1024, 1024)
             shadow_buffer.set_sort(-100)
@@ -1293,14 +1308,13 @@ class Game(ShowBase):
         )
         # Start the update cycle
         taskMgr.add(self.Update, "Update")        
-        self.accept('mouse1-up', self.MouseUp)
 
     # The Update cycle, this function should be used to update positions and anything that needs to be updated
     def Update(self, task):
-        if hasattr(self, 'thirdPersonCard') and hasattr(self, 'roverModel') and not hasattr(self, 'stopRover2PersonUpdate'):
+        if hasattr(self, 'thirdPersonCard') and hasattr(self, 'playerModel') and not hasattr(self, 'stopRover2PersonUpdate'):
             self.cm.setUvRange(self.thirdPersonTexture)
             self.thirdPersonCard.setTexture(self.thirdPersonTexture)
-            self.thirdPersonCam.lookAt(self.roverModel)
+            self.thirdPersonCam.lookAt(self.playerModel)
 
         camera_forward = self.camera.getQuat(self.render).getForward()
         camera_up = self.camera.getQuat(self.render).getUp()
@@ -1309,7 +1323,7 @@ class Game(ShowBase):
 
         self.dayNightCycle()
         
-        Rover_Position = (
+        Player_Position = (
             camera_position+
             camera_forward * 0 -  # Forward by 1.0 units
             camera_up * 2.5 +       # Downward by 0.5 units
@@ -1323,9 +1337,9 @@ class Game(ShowBase):
             camera_right * 0      # Rightward by 0.0 units
         )
         
-        if hasattr(self, 'roverModel'):
-            self.roverModel.setPos(Rover_Position)
-            self.roverModel.setHpr(self.camera.getH()+90, 90, 0)
+        if hasattr(self, 'playerModel'):
+            self.playerModel.setPos(Player_Position)
+            self.playerModel.setHpr(self.camera.getH()+90, 0, 0)
         
         self.thirdPersonCam.setPos(ThirdPersonCam_Position)
 
@@ -1340,6 +1354,9 @@ class Game(ShowBase):
             self._player_died = None
             self.Death()
         
+        if hasattr(self, 'fishyController'):
+            self.fishyController.MainUpdate()
+
         if not hasattr(self, "stopPowerBarUpdate") and hasattr(self, 'PowerBar'):
             self.PowerValue = min(self.PowerValue, self.PowerCapacity)
             self.PowerValue -= globalClock.getDt() * .5            
@@ -1445,6 +1462,7 @@ class Game(ShowBase):
         self.accept('mouse1', self.MouseIn)
         self.Font = self.loader.loadFont('assets/fonts/propaganda.ttf')
         self.Font.setPixelsPerUnit(120)
+        self.transmissionFont = self.loader.loadFont('assets/fonts/Hacked_CRT.ttf')
 
         self.clickSound = self.loader.loadSfx('assets/audio/click.ogg')
 
@@ -1470,10 +1488,10 @@ class Plot():
         pass
     async def plotLine(self, task):
         if not self.testing:
-            self.EuropaModel = await self.gameInstance.loader.loadModel("assets/models/europa.glb", blocking=False)
+            self.EuropaModel = await self.gameInstance.loader.loadModel("assets/models/europa.bam", blocking=False)
             self.EuropaModel.setScale(100)
             self.gameInstance.setBackgroundColor(0, 0, 0, 0)
-        self.roverModel = self.gameInstance.loader.loadModel("assets/models/Rover.glb")
+        self.roverModel = self.gameInstance.loader.loadModel("assets/models/Rover.bam")
         self.roverModel.setScale(2)
         self.roverModel.setPos(850, 1950, 470)
 
@@ -1543,30 +1561,24 @@ class Plot():
                                         sortOrder=-1)
             self.gameInstance.transitions.noFade()
 
+            # Add HUD
+            self.gameInstance.PlayerHUD()
+
             await Task.pause(2)
-            self.transponderFrame = DirectFrame(frameColor=(.2, .2, .2, 1),
-                                        frameSize=(-1.5, 1.5, -.2, .2), 
-                                        pos=(0, 0, .75), 
-                                        scale=(1, 1, 1), 
-                                        relief=DGG.RIDGE,
-                                        borderWidth=(0.05, 0.05)
-                                        )
-            self.gameInstance.textTypewriteAnimation(parent=self.transponderFrame, textPos=(-1.45, .1, .5), text="Warning: Crash landing detected! Rover systems...  functional.\nTransponder signal... weak.\nMission objective: Explore the planet of Europa; \nBudget Low; We need a breakthrough \nIt's all up to you, Good luck, operator.", scale=(0.04, 0.0275))
+            self.gameInstance.textTypewriteAnimation(parent=self.gameInstance.transponderFrame, textPos=(-1.45, .1, .5), text="Warning: Crash landing detected! Rover systems...  functional.\nTransponder signal... weak.\nMission objective: Explore the planet of Europa; \nBudget Low; We need a breakthrough \nIt's all up to you, Good luck, operator.", scale=(0.04, 0.0275))
             await Task.pause(5)
 
         # Reparent the models to the render, making the world, and set the lights
             self.blackScreen.destroy()
             self.gameInstance.transitions.fadeIn(1)
         self.gameInstance.roverModel = self.roverModel
+        self.gameInstance.playerModel = self.gameInstance.roverModel
         del self.roverModel
         self.gameInstance.world_bg.reparent_to(self.gameInstance.render)
         self.gameInstance.worldCollisionModel.reparentTo(self.gameInstance.render)
         self.gameInstance.render.setLight(self.gameInstance.sunLightNP)
         self.gameInstance.worldVisibleModel.reparentTo(self.gameInstance.render)
         self.gameInstance.render.setLight(self.gameInstance.ambientLightNP)
-        
-        # Add HUD
-        self.gameInstance.PlayerHUD()
 
         # initialize the camera controller
         self.gameInstance.CameraOperator()
@@ -1607,30 +1619,33 @@ class Plot():
         # It's important to keep the player engaged with interesting text and discoveries as they collect each sample.
 
         # First Sample
-            self.gameInstance.textTypewriteAnimation(parent=self.transponderFrame, textPos=(-1.45, .1, .5), text="Operator! We need something to sustain our funding \nOur Satellite have pinged an interesting signature on the moon; \nWe've placed a small marker \nGo ahead and collect a sample by left clicking", scale=(0.04, 0.0275))
+            self.gameInstance.textTypewriteAnimation(parent=self.gameInstance.transponderFrame, textPos=(-1.45, .1, .5), text="Operator! We need something to sustain our funding \nOur Satellite have pinged an interesting signature on the moon; \nWe've placed a small marker \nGo ahead and collect a sample by left clicking", scale=(0.04, 0.0275))
             await self.plotAsync
+            self.gameInstance.hit_name = ''
             print("Sample 1 Collected")
         
         # Second Sample
-            self.gameInstance.textTypewriteAnimation(parent=self.transponderFrame, textPos=(-1.45, .1, .5), text="Amazing! We have analyzed the sample and... Wow! \nWe are detecting high amounts of CH4 (Methane) \nBut it's not enough \nWe've pinged another signature, go ahead and collect a sample!", scale=(0.04, 0.0275))
+            self.gameInstance.textTypewriteAnimation(parent=self.gameInstance.transponderFrame, textPos=(-1.45, .1, .5), text="Amazing! We have analyzed the sample and... Wow! \nWe are detecting high amounts of CH4 (Methane) \nBut it's not enough \nWe've pinged another signature, go ahead and collect a sample!", scale=(0.04, 0.0275))
             self.researchNode.setPos(self.pointLocations[1])
             self.eventAdvanceFunc['reset']()
             self.eventDoneFunc['finish']()
             await self.plotAsync
+            self.gameInstance.hit_name = ''
             print("Sample 2 Collected")
 
         # Third Sample
-            self.gameInstance.textTypewriteAnimation(parent=self.transponderFrame, textPos=(-1.45, .1, .5), text="This is astonishing! \nWe've detected high amounts of Complex Carbons! \nWe need one more sign though... Liquid water", scale=(0.04, 0.0275))
+            self.gameInstance.textTypewriteAnimation(parent=self.gameInstance.transponderFrame, textPos=(-1.45, .1, .5), text="This is astonishing! \nWe've detected high amounts of Complex Carbons! \nWe need one more sign though... Liquid water", scale=(0.04, 0.0275))
             self.researchNode.setPos(self.pointLocations[2])
             self.eventAdvanceFunc['reset']()
             self.eventDoneFunc['finish']()
             await self.plotAsync
+            self.gameInstance.hit_name = ''
             print("Sample 3 Collected")
 
         # Instructions for the main gameplay loop for the first part of the game
-            self.gameInstance.textTypewriteAnimation(parent=self.transponderFrame, textPos=(-1.45, .1, .5), text="Perfect! Liquid water detected! \nWe got a $500 million grant for our operations \nWe're gonna burn through it quick; We need to keep making discoveries \nNow that we see signs of life... WE NEED TO FIND LIFE", scale=(0.04, 0.0275))
+            self.gameInstance.textTypewriteAnimation(parent=self.gameInstance.transponderFrame, textPos=(-1.45, .1, .5), text="Perfect! Liquid water detected! \nWe got a $500 million grant for our operations \nWe're gonna burn through it quick; We need to keep making discoveries \nNow that we see signs of life... WE NEED TO FIND LIFE", scale=(0.04, 0.0275))
             await Task.pause(12)
-            self.gameInstance.textTypewriteAnimation(parent=self.transponderFrame, textPos=(-1.45, .1, .5), text="You have 35 samples to find life \nWith each new sample... 10 Million more to the budget \nOnce we find life, we can use the extra money for upgrades \nBased on your needs of course", scale=(0.04, 0.0275))
+            self.gameInstance.textTypewriteAnimation(parent=self.gameInstance.transponderFrame, textPos=(-1.45, .1, .5), text="You have 35 samples to find life \nWith each new sample... 10 Million more to the budget \nOnce we find life, we can use the extra money for upgrades \nBased on your needs of course", scale=(0.04, 0.0275))
             
             self.FundsBar = DirectWaitBar(text="Funds:", value=100, pos=(.85, -15, -.7))
             self.FundsBar['barColor'] = (0, 0, 2, 2)
@@ -1655,9 +1670,10 @@ class Plot():
             # Loop
             for i in range(3, 38):
                 await self.plotAsync
+                self.gameInstance.hit_name = ''
                 print(f"Sample {i+1} Collected")
                 self.Funds += 10_000_000
-                self.gameInstance.textTypewriteAnimation(parent=self.transponderFrame, textPos=(-1.45, .1, .5), text=f"Sample {i+1} collected! Keep going operator!", scale=(0.04, 0.0275))
+                self.gameInstance.textTypewriteAnimation(parent=self.gameInstance.transponderFrame, textPos=(-1.45, .1, .5), text=f"Sample {i+1} collected! Keep going operator!", scale=(0.04, 0.0275))
                 self.researchNode.setPos(self.pointLocations[i])
                 self.eventAdvanceFunc['reset']()
                 self.eventDoneFunc['finish']()
@@ -1665,7 +1681,7 @@ class Plot():
             # Clean up and 
             self.plotChecks[0] = lambda: False  # Disable further checks for this event
             taskMgr.remove('updateFundsBar')  # Stop the task that checks for conditions to advance the plot
-            self.gameInstance.textTypewriteAnimation(parent=self.transponderFrame, textPos=(-1.45, .1, .5), text=f"Incredible! All 35 samples collected! \nWe've detected life signatures in multiple samples \nAnd you have {self.Funds} left in your fund! \nWe need to go deeper... Time for Upgrades!", scale=(0.04, 0.0275))       
+            self.gameInstance.textTypewriteAnimation(parent=self.gameInstance.transponderFrame, textPos=(-1.45, .1, .5), text=f"Incredible! All 35 samples collected! \nWe've detected life signatures in multiple samples \nAnd you have {self.Funds} left in your fund! \nWe need to go deeper... Time for Upgrades!", scale=(0.04, 0.0275))       
         
         # This concludes the first part of the plot where the player collects samples to find signs of life. 
         # Next, we would transition into the upgrade phase 
@@ -1679,69 +1695,85 @@ class Plot():
             self.eventDoneFunc['finish']()
             self.plotChecks[1] = lambda: False  # Disable further checks for this event
 
-        #Transformation scene
+            #Transformation scene
+            
+            self.gameInstance.setBackgroundColor(.9, .85, .8, 1)
+            self.gameInstance.cam.node().getLens().setFocalLength(1)
+            self.gameInstance.world_bg.removeNode()
+            self.gameInstance.roverModel.removeNode()
+            self.gameInstance.worldVisibleModel.hide()
+            self.gameInstance.worldCollisionModel.removeNode()
+            self.gameInstance.transitions.fadeOut(.5)
+            await Task.pause(1)
+            self.roverSubBody = self.gameInstance.loader.loadModel("assets/models/roverSubBody.bam")
+            self.roverSubBody.setScale(2)
+            self.roverSubBody.setPos(0, 0, 0)
+            self.roverSubBody.reparentTo(self.gameInstance.render)
+            self.gameInstance.camera.setPos(20, -10, -15)
+            self.gameInstance.camera.lookAt(self.roverSubBody)
+            self.gameInstance.camera.setP(self.gameInstance.camera.getP() + 5)
+            await Task.pause(1)
+            self.gameInstance.transitions.fadeIn(1)
+            await Task.pause(1)
+            self.gameInstance.transitions.fadeOut(1)
+            await Task.pause(1)
+            self.rightJetModel = self.gameInstance.loader.loadModel("assets/models/rightJet.bam")
+            self.rightJetModel.setScale(2)
+            self.rightJetModel.setPos(0, -2.2, 1.8)
+            self.rightJetModel.setHpr(180, 0, 0)
+            self.rightJetModel.reparentTo(self.gameInstance.render)
+            self.gameInstance.camera.setPos(-20, 20, 15)
+            self.gameInstance.camera.lookAt(self.roverSubBody)
+            await Task.pause(1)
+            self.gameInstance.transitions.fadeIn(1)
+            await Task.pause(1)
+            self.gameInstance.transitions.fadeOut(1)
+            await Task.pause(1)
+            self.leftJetModel = self.gameInstance.loader.loadModel("assets/models/leftJet.bam")
+            self.leftJetModel.setScale(2)
+            self.leftJetModel.setPos(0, 2.2, 1.8)
+            self.leftJetModel.setHpr(0, 0, 0)
+            self.leftJetModel.reparentTo(self.gameInstance.render)
+            self.gameInstance.camera.setPos(20, 20, 15)
+            self.gameInstance.camera.lookAt(self.roverSubBody)
+            await Task.pause(1)
+            self.gameInstance.transitions.fadeIn(1)
+            await Task.pause(1)
+            self.gameInstance.transitions.fadeOut(1)
+            await Task.pause(1)
+            self.roverSubBody.removeNode()
+            self.rightJetModel.removeNode()
+            self.leftJetModel.removeNode()
+            self.roverAquaticModel = self.gameInstance.loader.loadModel("assets/models/aquaticRover.bam")
+            self.roverAquaticModel.setScale(2)
+            self.roverAquaticModel.setPos(0, 0, -5)
+            self.roverAquaticModel.reparentTo(self.gameInstance.render)
+            await Task.pause(1)
+            self.gameInstance.transitions.fadeIn(1)
+            self.gameInstance.camera.setPos(5, 0, 0)
+            self.gameInstance.cam.node().getLens().setFocalLength(0.15)
+            self.gameInstance.camera.lookAt(LPoint3f(0, 0, 0))
+            self.roverAquaticModel.hprInterval(3, LVecBase3f(3600, 0, 0)).start()
+            self.roverAquaticModel.posInterval(1, LPoint3f(0, 0, 0)).start()
+            transitionText = OnscreenText(text="Upgrades Complete! \nTime to explore the depths of Europa! \n 2 more leaps left", pos=(0, .75), scale=0.1, fg=(1, 0, 0, 1), font=self.gameInstance.loader.loadFont('assets/fonts/propaganda.ttf') ,align=TextNode.ACenter)
+            await Task.pause(3)
+            self.gameInstance.transitions.fadeOut(1)
+            await Task.pause(1)
+            transitionText.destroy()
+            self.gameInstance.PlayerHUD()
+            self.gameInstance.cam.node().getLens().setFocalLength(0.25)
+            self.gameInstance.transitions.fadeIn(1)
+            await Task.pause(1)
+            self.gameInstance.CameraOperator()
+            self.gameInstance.playerModel = self.roverAquaticModel
+            self.gameInstance.setBackgroundColor(0, 0, .1, 1)
+            self.gameInstance.textTypewriteAnimation(parent=self.gameInstance.transponderFrame, textPos=(-1.45, .1, .5), text=f"With the upgrades complete, we can now explore the depths of Europa! \nWe need to get to the core, is what the governemnt told us to keep the lights on \n Your goal is to get to the core ", scale=(0.04, 0.0275))
+            await Task.pause(10)
+            self.gameInstance.textTypewriteAnimation(parent=self.gameInstance.transponderFrame, textPos=(-1.45, .1, .5), text=f"We located a mantle peak \nFrom there, we'll start drilling \nGood luck operator, we're counting on you!", scale=(0.04, 0.0275))
+            await Task.pause(10)
         
-        self.gameInstance.setBackgroundColor(.9, .85, .8, 1)
-        self.gameInstance.cam.node().getLens().setFocalLength(1)
-        self.gameInstance.world_bg.removeNode()
-        self.gameInstance.roverModel.removeNode()
-        self.gameInstance.worldVisibleModel.hide()
-        self.gameInstance.worldCollisionModel.removeNode()
-        self.gameInstance.transitions.fadeOut(.5)
-        await Task.pause(1)
-        self.roverSubBody = self.gameInstance.loader.loadModel("assets/models/roverSubBody.glb")
-        self.roverSubBody.setScale(2)
-        self.roverSubBody.setPos(0, 0, 0)
-        self.roverSubBody.reparentTo(self.gameInstance.render)
-        self.gameInstance.camera.setPos(20, -10, -15)
-        self.gameInstance.camera.lookAt(self.roverSubBody)
-        self.gameInstance.camera.setP(self.gameInstance.camera.getP() + 5)
-        await Task.pause(1)
-        self.gameInstance.transitions.fadeIn(1)
-        await Task.pause(1)
-        self.gameInstance.transitions.fadeOut(1)
-        await Task.pause(1)
-        self.rightJetModel = self.gameInstance.loader.loadModel("assets/models/rightJet.glb")
-        self.rightJetModel.setScale(2)
-        self.rightJetModel.setPos(0, -2.2, 1.8)
-        self.rightJetModel.setHpr(180, 0, 0)
-        self.rightJetModel.reparentTo(self.gameInstance.render)
-        self.gameInstance.camera.setPos(-20, 20, 15)
-        self.gameInstance.camera.lookAt(self.roverSubBody)
-        await Task.pause(1)
-        self.gameInstance.transitions.fadeIn(1)
-        await Task.pause(1)
-        self.gameInstance.transitions.fadeOut(1)
-        await Task.pause(1)
-        self.leftJetModel = self.gameInstance.loader.loadModel("assets/models/leftJet.glb")
-        self.leftJetModel.setScale(2)
-        self.leftJetModel.setPos(0, 2.2, 1.8)
-        self.leftJetModel.setHpr(0, 0, 0)
-        self.leftJetModel.reparentTo(self.gameInstance.render)
-        self.gameInstance.camera.setPos(20, 20, 15)
-        self.gameInstance.camera.lookAt(self.roverSubBody)
-        await Task.pause(1)
-        self.gameInstance.transitions.fadeIn(1)
-        await Task.pause(1)
-        self.gameInstance.transitions.fadeOut(1)
-        await Task.pause(1)
-        self.roverSubBody.removeNode()
-        self.rightJetModel.removeNode()
-        self.leftJetModel.removeNode()
-        self.roverAquaticModel = self.gameInstance.loader.loadModel("assets/models/aquaticRover.glb")
-        self.roverAquaticModel.setScale(2)
-        self.roverAquaticModel.setPos(0, 0, -5)
-        self.roverAquaticModel.reparentTo(self.gameInstance.render)
-        await Task.pause(1)
-        self.gameInstance.transitions.fadeIn(1)
-        self.gameInstance.camera.setPos(5, 0, 0)
-        self.gameInstance.cam.node().getLens().setFocalLength(0.15)
-        self.gameInstance.camera.lookAt(LPoint3f(0, 0, 0))
-        self.roverAquaticModel.hprInterval(3, LVecBase3f(3600, 0, 0)).start()
-        self.roverAquaticModel.posInterval(1, LPoint3f(0, 0, 0)).start()
-        transitionText = OnscreenText(text="Upgrades Complete! \nTime to explore the depths of Europa! \n 2 more leaps left", pos=(0, .75), scale=0.1, fg=(1, 0, 0, 1), font=self.gameInstance.loader.loadFont('assets/fonts/propaganda.ttf') ,align=TextNode.ACenter)
-        await Task.pause(3)
-        transitionText.destroy()
+        self.gameInstance.enemies(1, 1, (-25, 0), 1)
+
     def printPos(self):
         '''
         print('Main Frame Pos:' ,self.upgradeFrame.getPos())
@@ -1764,6 +1796,7 @@ class Plot():
         print(self.upgradeMotorButton['frameSize'])
         '''
     def UpgradeMenu(self):
+        delattr(self.gameInstance, "playerModel")
         self.openedUpgradeMenu = True
         self.hullUpgradeCount = 0
         self.batteryUpgradeCount = 0
@@ -1830,7 +1863,7 @@ class Plot():
                                               frameSize=(-0.1, 0.1, -0.03, 0.06), 
                                               pos=LPoint3f(-.22, 0, -.015), 
                                               hpr=LVecBase3f(0, 0, 0), 
-                                              text_font=self.gameInstance.loader.loadFont('assets/fonts/Hacked_CRT.ttf'),
+                                              text_font=self.gameInstance.transmissionFont,
                                               relief=1, 
                                               scale=LVecBase3f(1, 1, 1), 
                                               text_scale=(0.02, 0.02),
@@ -1844,7 +1877,7 @@ class Plot():
                                                  frameSize=(-0.1, 0.1, -0.03, 0.06), 
                                                  pos=LPoint3f(-.22, 0, -.015), 
                                                  hpr=LVecBase3f(0, 0, 0), 
-                                                 text_font=self.gameInstance.loader.loadFont('assets/fonts/Hacked_CRT.ttf'),
+                                                 text_font=self.gameInstance.transmissionFont,
                                                  relief=1, 
                                                  scale=LVecBase3f(1, 1, 1),
                                                  text_scale=(0.02, 0.02), 
@@ -1857,7 +1890,7 @@ class Plot():
                                                frameSize=(-0.1, 0.1, -0.03, 0.06), 
                                                pos=LPoint3f(-.22, 0, -.015), 
                                                hpr=LVecBase3f(0, 0, 0), 
-                                               text_font=self.gameInstance.loader.loadFont('assets/fonts/Hacked_CRT.ttf'),
+                                               text_font=self.gameInstance.transmissionFont,
                                                relief=1,
                                                text_pos=(0, 0.02), 
                                                scale=LVecBase3f(1, 1, 1), 
@@ -1877,7 +1910,7 @@ class Plot():
         self.hullUpgradeCountEnvelopingFrame = DirectFrame(parent=self.hullUpgradeFrame, frameColor=(.4, .4, .4, 1), frameSize=(-0.12, 0.12, -0.015, 0.015), pos=LPoint3f(0.018, 0, -.0275), hpr=LVecBase3f(0, 0, 0), relief=1)
         self.batteryUpgradeCountEnvelopingFrame = DirectFrame(parent=self.batteryUpgradeFrame, frameColor=(.4, .4, .4, 1), frameSize=(-0.12, 0.12, -0.015, 0.015), pos=LPoint3f(0.018, 0, -.0275), hpr=LVecBase3f(0, 0, 0), relief=1)
         self.motorUpgradeCountEnvelopingFrame = DirectFrame(parent=self.motorUpgradeFrame, frameColor=(.4, .4, .4, 1), frameSize=(-0.12, 0.12, -0.015, 0.015), pos=LPoint3f(0.018, 0, -.0275), hpr=LVecBase3f(0, 0, 0), relief=1)
-        self.exitButton = DirectButton(parent=self.upgradeFrame, frameColor=(0.5, 0.5, 0.5, 1), frameSize=(-0.2, 0.2, -0.09, 0.09), pos=LPoint3f(1.24, 0, -.15), hpr=LVecBase3f(0, 0, 0), text_font=self.gameInstance.loader.loadFont('assets/fonts/Hacked_CRT.ttf'), text_align=TextNode.ACenter ,relief=1, scale=LVecBase3f(1, 1, 1), text_pos=(0,-0.02), text_fg=(1,0,0,1), text_scale=(0.07, 0.07), text='Exit', command=exitUpgradeMenu)
+        self.exitButton = DirectButton(parent=self.upgradeFrame, frameColor=(0.5, 0.5, 0.5, 1), frameSize=(-0.2, 0.2, -0.09, 0.09), pos=LPoint3f(1.24, 0, -.15), hpr=LVecBase3f(0, 0, 0), text_font=self.gameInstance.transmissionFont, text_align=TextNode.ACenter ,relief=1, scale=LVecBase3f(1, 1, 1), text_pos=(0,-0.02), text_fg=(1,0,0,1), text_scale=(0.07, 0.07), text='Exit', command=exitUpgradeMenu)
     async def conditionBasedAdvancer(self, task):
         await Task.pause(0.5)  # Small delay to prevent tight looping
 
@@ -1901,6 +1934,7 @@ class Plot():
             # Check 0: research goal achieved — only true when gameInstance has hit_name and researchCollisionNode exists and names match
             lambda: hasattr(self.gameInstance, 'hit_name') and hasattr(self, 'researchCollisionNode') and (self.researchCollisionNode.getName() == self.gameInstance.hit_name),
             lambda: hasattr(self, 'closedUpgradeMenu'),  # Check 1: Closed Upgrade Menu — only true when the upgrade menu is closed
+            lambda: hasattr(self.gameInstance, "")
         ]
         self.eventCounter = len(self.plotChecks)
         self.plotEvents = {"researchGoalAchieved": self.plotChecks[0]}
