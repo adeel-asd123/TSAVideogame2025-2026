@@ -1773,6 +1773,14 @@ class Plot():
             await Task.pause(10)
         
         self.gameInstance.enemies(1, 1, (-25, 0), 1)
+        await self.plotAsync
+        self.eventAdvanceFunc['reset']()
+        self.eventDoneFunc['finish']()
+        self.gameInstance.enemies(2, 2, (-30, 0), 2)
+        await self.plotAsync
+        self.eventAdvanceFunc['reset']()
+        self.eventDoneFunc['finish']()
+        self.gameInstance.enemies(3, 3, (-35, 0), 3)
 
     def printPos(self):
         '''
@@ -1934,7 +1942,7 @@ class Plot():
             # Check 0: research goal achieved — only true when gameInstance has hit_name and researchCollisionNode exists and names match
             lambda: hasattr(self.gameInstance, 'hit_name') and hasattr(self, 'researchCollisionNode') and (self.researchCollisionNode.getName() == self.gameInstance.hit_name),
             lambda: hasattr(self, 'closedUpgradeMenu'),  # Check 1: Closed Upgrade Menu — only true when the upgrade menu is closed
-            lambda: hasattr(self.gameInstance, "")
+            lambda: hasattr(self.gameInstance, "levelDone")
         ]
         self.eventCounter = len(self.plotChecks)
         self.plotEvents = {"researchGoalAchieved": self.plotChecks[0]}
