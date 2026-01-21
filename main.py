@@ -12,6 +12,7 @@ __author__ = ''
 
 import os
 import random
+import math
 from direct.showbase.Transitions import Transitions
 from direct.actor.Actor import Actor
 from direct.showbase.ShowBase import ShowBase
@@ -37,8 +38,7 @@ from panda3d.core import (
     TextNode, 
     CollisionTraverser, 
     CollisionNode, 
-    CollisionHandlerPusher, 
-    CollisionSphere, 
+    CollisionHandlerPusher,  
     CollisionBox,
     LVector3, 
     CollisionRay, 
@@ -57,6 +57,7 @@ from panda3d.core import (
     Camera,
     OrthographicLens,
     Texture,
+    Quat,
     Vec3,
     Vec4,
     Shader,
@@ -357,6 +358,7 @@ class EnemyController():
             key = list(self.EnemyDict['model'].keys())[list(self.EnemyDict['model'].values()).index(enemy)]
             if not enemy.isEmpty() and not enemy.getAnimControl('hit').isPlaying() and self.EnemyDict['ai_behaviour'][key].behaviorStatus('pursue') == 'paused':
                 self.EnemyDict['ai_behaviour'][key].resumeAi('all')
+                enemy.stop()
                 enemy.loop('Walk')
     def destroy(self, KeepAI=False):
         self.Run = False
@@ -1337,12 +1339,31 @@ class Game(ShowBase):
             camera_right * 0      # Rightward by 0.0 units
         )
         
+        Arrow_Position = (
+            camera_position+
+            camera_forward * 5 +  # Forward by 5.0 units
+            camera_up * 0 +       # Upward by 0.0 units
+            camera_right * -1      # Rightward by 0.0 units
+        )
+
         if hasattr(self, 'playerModel'):
             self.playerModel.setPos(Player_Position)
             self.playerModel.setHpr(self.camera.getH()+90, 0, 0)
         
         self.thirdPersonCam.setPos(ThirdPersonCam_Position)
 
+        if hasattr(self.Plot, 'pointingArrow') and hasattr(self.Plot, 'mountainPeakPosition'):
+            self.Plot.pointingArrow.setPos(Arrow_Position)
+            self.Plot.pointingArrow.lookAt(self.render, self.Plot.mountainPeakPosition)
+            direction = self.Plot.mountainPeakPosition - Arrow_Position
+            direction.normalize()
+            # Compute pitch only (vertical angle)
+            pitch = -math.degrees(math.asin(direction.z))
+
+            # Preserve existing H and R
+            self.Plot.pointingArrow.setP(pitch-90)
+            self.Plot.pointingArrow.setR(self.Plot.pointingArrow.getR() + 90)
+            self.Plot.pointingArrow.setH(self.Plot.pointingArrow.getH() + 180)
         if self.worldCollisionModel.getParent() == self.render:
             self.worldCollisionModel.setPos(0, 0, 0)
         
@@ -1771,17 +1792,29 @@ class Plot():
             await Task.pause(10)
             self.gameInstance.textTypewriteAnimation(parent=self.gameInstance.transponderFrame, textPos=(-1.45, .1, .5), text=f"We located a mantle peak \nFrom there, we'll start drilling \nGood luck operator, we're counting on you!", scale=(0.04, 0.0275))
             await Task.pause(10)
-        
-        self.gameInstance.enemies(1, 1, (-25, 0), 1)
-        await self.plotAsync
-        self.eventAdvanceFunc['reset']()
-        self.eventDoneFunc['finish']()
+            self.gameInstance.textTypewriteAnimation(parent=self.gameInstance.transponderFrame, textPos=(-1.45, .1, .5), text=f"Use the arrow to guide you to the mantle peak \nWatch out for hostile pisces \nThey don't take kindly to intruders", scale=(0.04, 0.0275))
+            self.pointingArrow = self.gameInstance.loader.loadModel("assets/models/arrow.bam")
+            self.mountainPeakModel = self.gameInstance.loader.loadModel("assets/models/mountainPeak.bam")
+            self.mountainPeakModel.setPos(165, -208, -1150)
+            self.mountainPeakModel.setScale(10)
+            self.mountainPeakModel.reparentTo(self.gameInstance.render)
+            self.pointingArrow.reparentTo(self.gameInstance.render)
+            def distanceCalculator(task):
+                self.gameInstance.camera.getPos(self.gameInstance.render)
+                self.mountainPeakPosition = LPoint3f(163, -149, -1000)
+                scaleFactor = max(0.0, min(1.0, ((self.gameInstance.camera.getPos(self.gameInstance.render) - self.mountainPeakPosition).length() - 0) / (700 - 0)))
+                self.pointingArrow.setScale(0.5 * scaleFactor)
+                return Task.cont
+            taskMgr.add(distanceCalculator, "distanceCalculator")
+            self.gameInstance.enemies(1, 1, (-25, 0), 1)
+            await self.plotAsync
+            self.eventAdvanceFunc['reset']()
+            self.eventDoneFunc['finish']()
         self.gameInstance.enemies(2, 2, (-30, 0), 2)
         await self.plotAsync
         self.eventAdvanceFunc['reset']()
         self.eventDoneFunc['finish']()
         self.gameInstance.enemies(3, 3, (-35, 0), 3)
-
     def printPos(self):
         '''
         print('Main Frame Pos:' ,self.upgradeFrame.getPos())
