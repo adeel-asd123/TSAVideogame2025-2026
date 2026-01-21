@@ -1343,7 +1343,7 @@ class Game(ShowBase):
             camera_position+
             camera_forward * 5 +  # Forward by 5.0 units
             camera_up * 0 +       # Upward by 0.0 units
-            camera_right * -1      # Rightward by 0.0 units
+            camera_right * -2      # Rightward by 0.0 units
         )
 
         if hasattr(self, 'playerModel'):
@@ -1641,6 +1641,28 @@ class Plot():
 
         # First Sample
             self.gameInstance.textTypewriteAnimation(parent=self.gameInstance.transponderFrame, textPos=(-1.45, .1, .5), text="Operator! We need something to sustain our funding \nOur Satellite have pinged an interesting signature on the moon; \nWe've placed a small marker \nGo ahead and collect a sample by left clicking", scale=(0.04, 0.0275))
+            
+            # Small tutorial on how to collect samples and move
+            self.tutorialFrame = DirectFrame(frameColor=(.2, .2, .2, 1),
+                                        frameSize=(-1.1, 1.1, -.25, .25), 
+                                        pos=(-1.45, 0, 0), 
+                                        scale=(1, 1, 1), 
+                                        relief=DGG.RIDGE,
+                                        borderWidth=(0.05, 0.05)
+                                        )
+            self.tutorialText = OnscreenText(
+                parent=self.tutorialFrame,
+                pos=(-1, 0.15),
+                scale=0.03,
+                font=self.gameInstance.transmissionFont,
+                align=TextNode.ALeft,
+                fg=(1, 0, 1, 1),
+                text="Click W to move forward\nClick A to move left\nClick S to move backward\nClick D to move right\nUse the mouse to look around\nLeft Click the satelite signals (the red particles) samples",
+            )
+
+            await Task.pause(15)
+            self.tutorialFrame.destroy()
+
             await self.plotAsync
             self.gameInstance.hit_name = ''
             print("Sample 1 Collected")
