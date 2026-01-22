@@ -1815,6 +1815,24 @@ class Plot():
             self.gameInstance.textTypewriteAnimation(parent=self.gameInstance.transponderFrame, textPos=(-1.45, .1, .5), text=f"We located a mantle peak \nFrom there, we'll start drilling \nGood luck operator, we're counting on you!", scale=(0.04, 0.0275))
             await Task.pause(10)
             self.gameInstance.textTypewriteAnimation(parent=self.gameInstance.transponderFrame, textPos=(-1.45, .1, .5), text=f"Use the arrow to guide you to the mantle peak \nWatch out for hostile pisces \nThey don't take kindly to intruders", scale=(0.04, 0.0275))
+            
+            self.tutorialFrame = DirectFrame(frameColor=(.2, .2, .2, 1),
+                                        frameSize=(-1.1, 1.1, -.25, .25), 
+                                        pos=(-1.45, 0, 0), 
+                                        scale=(1, 1, 1), 
+                                        relief=DGG.RIDGE,
+                                        borderWidth=(0.05, 0.05)
+                                        )
+            self.tutorialText = OnscreenText(
+                parent=self.tutorialFrame,
+                pos=(-1, 0.15),
+                scale=0.03,
+                font=self.gameInstance.transmissionFont,
+                align=TextNode.ALeft,
+                fg=(1, 0, 1, 1),
+                text="Click your left mouse button to stun the fish\nAvoid enemy fish to prevent damage\nReach the mantle peak indicated by the arrow \nCarefu;l, some fish take more stuns than others",
+            )
+            
             self.pointingArrow = self.gameInstance.loader.loadModel("assets/models/arrow.bam")
             self.mountainPeakModel = self.gameInstance.loader.loadModel("assets/models/mountainPeak.bam")
             self.mountainPeakModel.setPos(165, -208, -1150)
