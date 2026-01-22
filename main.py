@@ -1830,7 +1830,7 @@ class Plot():
                 font=self.gameInstance.transmissionFont,
                 align=TextNode.ALeft,
                 fg=(1, 0, 1, 1),
-                text="Click your left mouse button to stun the fish\nAvoid enemy fish to prevent damage\nReach the mantle peak indicated by the arrow \nCarefu;l, some fish take more stuns than others",
+                text="Click your left mouse button to stun the fish\nAvoid enemy fish to prevent damage\nReach the mantle peak indicated by the arrow \nCarefull, some fish take more stuns than others",
             )
             
             self.pointingArrow = self.gameInstance.loader.loadModel("assets/models/arrow.bam")

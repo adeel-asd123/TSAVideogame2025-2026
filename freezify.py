@@ -4,17 +4,17 @@ import sys, os
 if sys.version_info[:2] != (3, 12):
     sys.exit("Run this with Python 3.12, or edit this script")
 
-THIS_DIR = r'C:\Users\asdon\OneDrive\Documents\Workspace\TSAVideogame2025-2026'
-BUNDLE_DIR = THIS_DIR + r"\emscripten-panda3d-bundle"
+THIS_DIR = r'/home/linuxvm/freezer'
+BUNDLE_DIR = THIS_DIR + r"/emscripten-panda3d-bundle"
 
 # Python built for target
-PY_INCLUDE_DIR = BUNDLE_DIR + r"\python\include\python3.12"
-PY_LIB_DIR = BUNDLE_DIR + r"\python\lib"
+PY_INCLUDE_DIR = BUNDLE_DIR + r"/python/include/python3.12"
+PY_LIB_DIR = BUNDLE_DIR + r"/python/lib"
 PY_LIBS = r"libpython3.12.a", r"libmpdec.a", #"libexpat.a", "libHacl_Hash_SHA2.a"
 
 # Python extension modules
-PY_MODULE_DIR = PY_LIB_DIR + r"\python\lib\python3.12\lib-dynload"
-PY_STDLIB_DIR = PY_LIB_DIR + r"\python\lib\python3.12"
+PY_MODULE_DIR = PY_LIB_DIR + r"/python/lib/python3.12/lib-dynload"
+PY_STDLIB_DIR = PY_LIB_DIR + r"/python/lib/python3.12"
 PY_MODULES = []
 
 # Panda modules / libraries
@@ -366,7 +366,7 @@ freezer.cenv = EmscriptenEnvironment()
 freezer.excludeModule('doctest')
 freezer.excludeModule('difflib')
 freezer.excludeModule('panda3d')
-freezer.addModule('__main__', filename=THIS_DIR+r"\main.py")
+freezer.addModule('__main__', filename=THIS_DIR+r"/main.py")
 
 freezer.done(addStartupModules=True)
 freezer.generateCode("TSAVideoGame", compileToExe=True)
