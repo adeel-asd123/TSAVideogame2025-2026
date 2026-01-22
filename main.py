@@ -1833,6 +1833,9 @@ class Plot():
                 text="Click your left mouse button to stun the fish\nAvoid enemy fish to prevent damage\nReach the mantle peak indicated by the arrow \nCarefull, some fish take more stuns than others",
             )
             
+            await Task.pause(7)
+            self.tutorialFrame.destroy()
+
             self.pointingArrow = self.gameInstance.loader.loadModel("assets/models/arrow.bam")
             self.mountainPeakModel = self.gameInstance.loader.loadModel("assets/models/mountainPeak.bam")
             self.mountainPeakModel.setPos(165, -208, -1150)
@@ -1850,11 +1853,23 @@ class Plot():
             await self.plotAsync
             self.eventAdvanceFunc['reset']()
             self.eventDoneFunc['finish']()
-        self.gameInstance.enemies(2, 2, (-30, 0), 2)
-        await self.plotAsync
-        self.eventAdvanceFunc['reset']()
-        self.eventDoneFunc['finish']()
-        self.gameInstance.enemies(3, 3, (-35, 0), 3)
+            self.gameInstance.enemies(2, 2, (-30, 0), 2)
+            await self.plotAsync
+            self.eventAdvanceFunc['reset']()
+            self.eventDoneFunc['finish']()
+            self.gameInstance.enemies(3, 3, (-35, 0), 3)
+            await self.plotAsync
+            self.eventAdvanceFunc['reset']()
+            self.eventDoneFunc['finish']()
+            self.pointingArrow.removeNode()
+            self.mountainPeakModel.removeNode()
+        self.gameInstance.CameraOperator()
+        self.LeviathonModel = Actor("assets/models/leviathon.bam", {'attack': 'assets/models/Leviathon-attack.bam'})
+        self.LeviathonModel.setScale(10)
+        self.LeviathonModel.reparentTo(self.gameInstance.render)
+        self.gameInstance.camera.lookAt(self.LeviathonModel)
+        self.LeviathonModel.loop(self.LeviathonModel.getAnimNames()[0])
+
     def printPos(self):
         '''
         print('Main Frame Pos:' ,self.upgradeFrame.getPos())
