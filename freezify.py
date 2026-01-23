@@ -20,8 +20,8 @@ PY_MODULES = []
 # Panda modules / libraries
 PANDA_BUILT_DIR = BUNDLE_DIR + "/panda3d-opt"
 #PANDA_BUILT_DIR = BUNDLE_DIR + "/panda3d"
-PANDA_MODULES = ["core", "direct", "ai"]
-PANDA_LIBS = ["libpanda", "libpandaexpress", "libp3dtool", "libp3dtoolconfig", "libp3webgldisplay", "libp3direct", "libp3openal_audio", "libpandaai"]
+PANDA_MODULES = ["core", "direct", "ai", "physics"]
+PANDA_LIBS = ["libpanda", "libpandaexpress", "libp3dtool", "libp3dtoolconfig", "libp3webgldisplay", "libp3direct", "libp3openal_audio", "libpandaai", "libpandaphysics"]
 PANDA_STATIC = True # built with --static
 
 # Increase this when emscripten complains about running out of memory
@@ -72,7 +72,7 @@ PRELOAD_FILES = [
 'assets/models/europa.bam',
 'assets/models/hitanimation.bam',
 'assets/models/leftJet.bam',
-'assets/models/Material.001 Base Color.png',
+'assets/models/Material.001\ Base\ Color.png',
 'assets/models/mountainPeak.bam',
 'assets/models/researchModel.bam',
 'assets/models/rightJet.bam',
@@ -207,6 +207,7 @@ freezer.frozenMainCode = """
 extern PyObject *PyInit_core();
 extern PyObject *PyInit_direct();
 extern PyObject *PyInit_ai();
+extern PyObject *PyInit_physics();
 
 extern void init_libOpenALAudio();
 extern void init_libpnmimagetypes();
@@ -264,8 +265,9 @@ Py_FrozenMain(int argc, char **argv)
     PyDict_SetItemString(panda3d_dict, "ai", direct_module);
     PyDict_SetItemString(sys_modules, "panda3d.ai", ai_module);
 
-    //PyObject *physics_module = PyInit_physics();
-    //PyDict_SetItemString(panda3d_dict, "physics", physics_module);
+    PyObject *physics_module = PyInit_physics();
+    PyDict_SetItemString(panda3d_dict, "physics", physics_module);
+    PyDict_SetItemString(sys_modules, "panda3d.physics", physics_module);
 
     init_libOpenALAudio();
     init_libpnmimagetypes();

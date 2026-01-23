@@ -57,7 +57,7 @@ from panda3d.core import (
     Camera,
     OrthographicLens,
     Texture,
-    Quat,
+    TexturePool,
     Vec3,
     Vec4,
     Shader,
@@ -1864,7 +1864,7 @@ class Plot():
             self.pointingArrow.removeNode()
             self.mountainPeakModel.removeNode()
         self.gameInstance.CameraOperator()
-        self.LeviathonModel = Actor("assets/models/leviathon.bam", {'attack': 'assets/models/Leviathon-attack.bam'})
+        self.LeviathonModel = Actor("assets/models/Leviathon.glb", {'attack': 'assets/models/Leviathon-attack.glb'})
         self.LeviathonModel.setScale(10)
         self.LeviathonModel.reparentTo(self.gameInstance.render)
         self.gameInstance.camera.lookAt(self.LeviathonModel)
