@@ -10,13 +10,16 @@ A game made for TSA Videogame design 2025-2026
 '''
 __author__ = ''
 
+
 import os
 import random
 import math
+import sys
 from direct.showbase.Transitions import Transitions
 from direct.actor.Actor import Actor
 from direct.showbase.ShowBase import ShowBase
 from direct.task import Task
+import direct.showbase.PhysicsManagerGlobal
 from direct.showbase.DirectObject import DirectObject
 from direct.controls.InputState import InputState
 from direct.particles.ParticleEffect import ParticleEffect
@@ -115,12 +118,6 @@ class CameraControllerBehaviour(DirectObject):
             self._input_state.watchWithModifiers(self._keys[key], key)
 
         self._showbase.disableMouse()
-
-        props = WindowProperties()
-        props.setMouseMode(WindowProperties.MConfined)
-        props.setCursorHidden(True)
-
-        self._showbase.win.requestProperties(props)
         
         self._showbase.taskMgr.add(self.update, "UpdateCameraTask" + str(self._instance))
     
@@ -376,6 +373,7 @@ class EnemyController():
 
 class Game(ShowBase):
     vfs = VirtualFileSystem.getGlobalPtr()
+    baseFolder = (f"{sys.argv[0]}").replace(r'\main.py', "")
     inaMenu = True
     mouse_sensitivity = 0.5
     PlayerHull = 100
@@ -527,8 +525,8 @@ class Game(ShowBase):
         props = self.win.getProperties()
         # This is needed to for WebGL. If the window is not in focus, the mouse won't work, so we need to request focus
         if not self.inaMenu:
-            if not props.getForeground() or not props.getCursorHidden() or props.getMouseMode() != WindowProperties.MConfined:
-                self.win.requestProperties(WindowProperties(foreground=True, mouse_mode=WindowProperties.MConfined, cursor_hidden=True))
+            if not props.getForeground() or not props.getCursorHidden() or props.getMouseMode() != WindowProperties.MRelative:
+                self.win.requestProperties(WindowProperties(foreground=True, mouse_mode=WindowProperties.MRelative, cursor_hidden=True))
         
         # Create a CollisionRay for the mouse click
         ray_node = CollisionNode('click-ray')
@@ -594,7 +592,10 @@ class Game(ShowBase):
         # If we are not in a menu, then we disable the camera controller
         # And set our bool to true, critical because our click function refocuses the window
         else:
-            self.cam_controller.disable()   
+            self.cam_controller.disable()  
+            props = WindowProperties()
+            props.setCursorHidden(False)
+            self._showbase.win.requestProperties(props) 
             self.inaMenu = True
         # Using our boolean we pass an if statement to effectively switch when oue mouse focuses on clicks
     def TutorialMenu(self):
@@ -629,7 +630,7 @@ class Game(ShowBase):
         self.card.setTexture(self.tutorialVideo)
         self.card.setPos(-0, 0, 0)
         self.card.reparentTo(self.tutorialMainFrame)
-        self.tutorialAudio = self.loader.loadSfx(r"assets/audio/tutorial.mp4")
+        self.tutorialAudio = self.loader.loadSfx(r"assets/audio/tutorial.avi")
         self.tutorialVideo.synchronizeTo(self.tutorialAudio)
 
         def PlayblackSliderMethod(self):
@@ -706,8 +707,10 @@ class Game(ShowBase):
                 self.btnSave.destroy()
                 self.disclamerLabel.destroy()
                 self.keyboardSettingsOpen = False
-#            if self.audioSettingsOpen:
-
+            if self.audioSettingsOpen:
+                self.audioMuteLabel.destroy()
+                self.audioMuteButton.destroy()
+                self.audioSettingsOpen = False
             if self.aboutSettingsOpen:
                 self.aboutLabel.destroy()
                 self.gameAboutLabel.destroy()
@@ -914,6 +917,34 @@ class Game(ShowBase):
             )
             clear_menu()
             self.keyboardSettingsOpen = True
+        
+        def AudioSettingMethod(self):
+            def muteClick(self):
+                self.clickSound = self.loader.loadSfx('assets/audio/mute.ogg')
+            self.audioMuteLabel = DirectLabel(frameColor=(0.6, 0.6, 0.6, 1),
+                                        text="About",
+                                        text_scale=0.1,
+                                        pos=LPoint3f(-0.025, 0, 0.85),
+                                        parent=self.scrolledFrame.getCanvas(),
+                                        relief=None
+                                        )
+            
+            self.audioMuteButton = DirectButton(
+                frameColor=(0.4, 0.4, 0.4, 1),
+                frameSize=(-0.09, 0.09, -0.07, 0.13),
+                pos=LPoint3f(-0.37666, 0, 0.57666),
+                hpr=LVecBase3f(0, 0, 0),
+                relief=1,
+                scale=LVecBase3f(1, 1, 1),
+                image= 'assets/images/mouseIcon.png',
+                image_scale = (.09, .09, .09),
+                image_pos = (0, 0, 0.03),
+                image_hpr = (0, 0, 0),
+                command=muteClick,
+                extraArgs=[self],
+            )
+            clear_menu()
+            self.audioSettingsOpen = True
         def AboutSettingMethod(self):
             self.aboutLabel = DirectLabel(frameColor=(0.6, 0.6, 0.6, 1),
                                         text="About",
@@ -923,8 +954,8 @@ class Game(ShowBase):
                                         relief=None
                                         )
             self.gameAboutLabel = DirectLabel(frameColor=(0.6, 0.6, 0.6, 1),
-                                            text= "TSA Videogame Design 2025-2026 \n '' is a  game developed by \n  the team 1034-1 for the 2025-2026 \n  \
-                                            Technology Student Association Competition for Video Game Design. \n this is a  based on the theme of \n\
+                                            text= "TSA Videogame Design 2025-2026 \n 'Doomed to Europa' is a game developed by \n  the team 1679-3 for the 2025-2026 \n  \
+                                            Technology Student Association Competition for Video Game Design. \n this is a based on the theme of \n\
                                             We developed this game using \n the Panda3D game engine \n differing from Unity and Unreal as \n it is a purely text edited engine",
                                             text_scale=0.04,
                                             pos=LPoint3f(-0.04, 0, 0.3),
@@ -976,8 +1007,8 @@ class Game(ShowBase):
             image_scale = (.07, .07, .07),
             image_pos = (0, 0, .03),
             image_hpr = (0, 0, 0),
-            command=self.playButtonMethod.set_result,
-            extraArgs=[None],
+            command=AudioSettingMethod,
+            extraArgs=[self],
         )
         self.btnAudioSet.setTransparency(TransparencyAttrib.MAlpha)
         
@@ -1166,9 +1197,8 @@ class Game(ShowBase):
         self.currentModels = []
         if not hasattr(self, 'Shader_setup'):
             self.Shader_setup = None
-            print(PandaSystem.getPlatform())
             if PandaSystem.getPlatform() == 'win_amd64' or PandaSystem.getPlatform() == 'osx_aarch64':
-                shaders = [f"{os.path.dirname(__file__)}/assets/shaders/Shader.vert", f"{os.path.dirname(__file__)}/assets/shaders/Shader.frag"]
+                shaders = [self.baseFolder + r"\assets\shaders\Shader.vert", self.baseFolder + r"\assets\shaders\Shader.frag"]
                 patchedShaders = []
                 for file in shaders:    
                     with open(file, 'r') as file:
@@ -1251,8 +1281,23 @@ class Game(ShowBase):
         world_bg_texture.set_wrap_v(SamplerState.WM_mirror)
         world_bg_texture.set_anisotropic_degree(400)
         self.world_bg.set_texture(world_bg_texture)
-        world_bg_shader = Shader.load(Shader.SL_GLSL, "assets/shaders/world_bg.vert.glsl", "assets/shaders/world_bg.frag.glsl")
-        self.world_bg.set_shader(world_bg_shader) 
+        if PandaSystem.getPlatform() == 'win_amd64' or PandaSystem.getPlatform() == 'osx_aarch64':
+                shaders = [self.baseFolder + r"\assets\shaders\world_bg.vert.glsl", self.baseFolder + r"\assets\shaders\world_bg.frag.glsl"]
+                patchedShaders = []
+                for file in shaders:    
+                    with open(file, 'r') as file:
+                        code = file.read()
+                        code = code.replace("#version 300 es", "#version 330")
+                        code = "\n".join(
+                            line for line in code.splitlines()
+                            if not line.strip().startswith("precision")
+                        )
+                        patchedShaders.append(code)
+                self.bgShader = Shader.make(Shader.SL_GLSL, patchedShaders[0], patchedShaders[1])
+        else:
+                print("Using original shaders")
+                self.bgShader = Shader.load(Shader.SL_GLSL, "assets/shaders/world_bg.vert.glsl", "assets/shaders/world_bg.frag.glsl")
+        self.world_bg.set_shader(self.bgShader) 
         
         # Create a collision node for the world
         self.world_collision_node = self.worldCollisionModel.find("**/+CollisionNode")
@@ -1352,7 +1397,7 @@ class Game(ShowBase):
         
         self.thirdPersonCam.setPos(ThirdPersonCam_Position)
 
-        if hasattr(self.Plot, 'pointingArrow') and hasattr(self.Plot, 'mountainPeakPosition'):
+        if hasattr(self, "Plot") and hasattr(self.Plot, 'pointingArrow') and hasattr(self.Plot, 'mountainPeakPosition'):
             self.Plot.pointingArrow.setPos(Arrow_Position)
             self.Plot.pointingArrow.lookAt(self.render, self.Plot.mountainPeakPosition)
             direction = self.Plot.mountainPeakPosition - Arrow_Position
@@ -1446,10 +1491,6 @@ class Game(ShowBase):
         lens.setFocalLength(0.25)
 
         self.currentwave = 0
-
-        props = WindowProperties()
-        props.setSize(1920, 670)
-        self.win.requestProperties(props)
 
         # Defining the Traverser, the task that checks for collisions, and the pusher, the task that pushes objects when it collides
         # The Traverser reports to the pusher, we also need to tell Panda3d which objects respond to collisions
@@ -1604,7 +1645,7 @@ class Plot():
         # initialize the camera controller
         self.gameInstance.CameraOperator()
 
-        with open(f'{os.path.dirname(__file__)}/save.txt', 'r') as f:
+        with open(self.gameInstance.baseFolder + r"\save.txt", 'r') as f:
             line = f.readline()
             line = line.replace('LPoint3f(', '').replace(')', '')
             x, y, z = map(float, line.split(','))
@@ -1624,8 +1665,7 @@ class Plot():
             self.researchNode.reparentTo(self.gameInstance.render)
             self.researchNode.hide()
             self.researchLocationEffect = ParticleEffect()
-            os.chdir(os.path.abspath(os.path.dirname(__file__)))
-            self.researchLocationEffect.loadConfig(f"{Filename.fromOsSpecific(os.path.dirname(__file__))}/assets/particles/researchParticles.ptf")
+            self.researchLocationEffect.loadConfig(Filename.fromOsSpecific(self.gameInstance.baseFolder + r"\assets\particles\researchParticles.ptf"))
             self.researchLocationEffect.clearShader()
             self.researchLocationEffect.start(self.researchNode, self.gameInstance.render)
             self.researchNode.setPos(self.pointLocations[0])
@@ -1725,7 +1765,7 @@ class Plot():
             self.plotChecks[0] = lambda: False  # Disable further checks for this event
             taskMgr.remove('updateFundsBar')  # Stop the task that checks for conditions to advance the plot
             self.gameInstance.textTypewriteAnimation(parent=self.gameInstance.transponderFrame, textPos=(-1.45, .1, .5), text=f"Incredible! All 35 samples collected! \nWe've detected life signatures in multiple samples \nAnd you have {self.Funds} left in your fund! \nWe need to go deeper... Time for Upgrades!", scale=(0.04, 0.0275))       
-        
+            await Task.pause(8)
         # This concludes the first part of the plot where the player collects samples to find signs of life. 
         # Next, we would transition into the upgrade phase 
         if not self.testing:
@@ -1809,7 +1849,7 @@ class Plot():
             await Task.pause(1)
             self.gameInstance.CameraOperator()
             self.gameInstance.playerModel = self.roverAquaticModel
-            self.gameInstance.setBackgroundColor(0, 0, .1, 1)
+            self.gameInstance.setBackgroundColor(0, 0, .4, 1)
             self.gameInstance.textTypewriteAnimation(parent=self.gameInstance.transponderFrame, textPos=(-1.45, .1, .5), text=f"With the upgrades complete, we can now explore the depths of Europa! \nWe need to get to the core, is what the governemnt told us to keep the lights on \n Your goal is to get to the core ", scale=(0.04, 0.0275))
             await Task.pause(10)
             self.gameInstance.textTypewriteAnimation(parent=self.gameInstance.transponderFrame, textPos=(-1.45, .1, .5), text=f"We located a mantle peak \nFrom there, we'll start drilling \nGood luck operator, we're counting on you!", scale=(0.04, 0.0275))
