@@ -26,7 +26,6 @@ from direct.particles.ParticleEffect import ParticleEffect
 import direct.gui.DirectGuiGlobals as DGG
 from panda3d.ai import AIWorld, AICharacter
 from panda3d.core import (
-    getModelPath,
     PandaSystem,
     FrameBufferProperties, 
     WindowProperties,
@@ -82,11 +81,7 @@ loadPrcFileData('', 'gl-version 4 1')
 vfs = VirtualFileSystem.getGlobalPtr()
 
 # Mount the assets folder as-is
-vfs.mount(Filename("/home/ec2-user/Game/assets"), 0)
-
-# Add to model search path
-getModelPath().appendDirectory(Filename("/home/ec2-user/Game/assets"))
-
+vfs.mount(Filename("/home/ec2-user/Game/assets"), Filename("./assets"), 0)
 
 '''
 The camera controller is a class that handles the movement and rotation of the camera in the game.
@@ -1293,7 +1288,7 @@ class Game(ShowBase):
         world_bg_texture.set_anisotropic_degree(400)
         self.world_bg.set_texture(world_bg_texture)
         if PandaSystem.getPlatform() == 'win_amd64' or PandaSystem.getPlatform() == 'osx_aarch64':
-                shaders = [self.baseFolder + r"\assets\shaders\world_bg.vert.glsl", self.baseFolder + r"\assets\shaders\world_bg.frag.glsl"]
+                shaders = ["./assets/shaders/world_bg.vert.glsl","./assets/shaders/world_bg.frag.glsl"]
                 patchedShaders = []
                 for file in shaders:    
                     with open(file, 'r') as file:
