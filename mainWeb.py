@@ -26,7 +26,6 @@ from direct.particles.ParticleEffect import ParticleEffect
 import direct.gui.DirectGuiGlobals as DGG
 from panda3d.ai import AIWorld, AICharacter
 from panda3d.core import (
-    getModelPath,
     PandaSystem,
     FrameBufferProperties, 
     WindowProperties,
@@ -57,10 +56,8 @@ from panda3d.core import (
     Filename,
     DirectionalLight,
     AmbientLight,
-    Multifile,
     OrthographicLens,
     Texture,
-    TexturePool,
     Vec3,
     Vec4,
     Shader,
@@ -84,14 +81,6 @@ This is the core of the camera, and it is responsible for handling the input fro
 The default values are set to 9 for velocity and 0.2 for mouse sensitivity, and the initial position of the camera is set to (-0.5, -12, 7.7).
 The default view is First Person. I will add a third person view later
 '''
-
-vfs = VirtualFileSystem.getGlobalPtr()
-
-mf = Multifile()
-mf.openRead(Filename("Doomed2Europa.data"))
-
-# Mount at root (or change to "/assets" if you prefer)
-vfs.mount(mf, "/", VirtualFileSystem.MFReadOnly)
 
 class CameraControllerBehaviour(DirectObject):
     _instances = 0
@@ -1496,6 +1485,20 @@ class Game(ShowBase):
         return Task.cont
     def __init__(self, Plot: 'Plot'):
         super().__init__()
+
+        def walk_vfs(path="/"):
+            files = self.vfs.scanDirectory(Filename(path))
+            if not files:
+                return
+
+            for f in files:
+                full_path = f.getFilename()
+                print(full_path)
+
+                if f.isDirectory():
+                    walk_vfs(full_path)
+
+        walk_vfs("/")
         
         lens = self.cam.node().getLens()
         lens.setFocalLength(0.25)
