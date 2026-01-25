@@ -26,7 +26,7 @@ from direct.particles.ParticleEffect import ParticleEffect
 import direct.gui.DirectGuiGlobals as DGG
 from panda3d.ai import AIWorld, AICharacter
 from panda3d.core import (
-    Camera,
+    getModelPath,
     PandaSystem,
     FrameBufferProperties, 
     WindowProperties,
@@ -84,6 +84,9 @@ This is the core of the camera, and it is responsible for handling the input fro
 The default values are set to 9 for velocity and 0.2 for mouse sensitivity, and the initial position of the camera is set to (-0.5, -12, 7.7).
 The default view is First Person. I will add a third person view later
 '''
+
+print(os.getcwd())
+
 class CameraControllerBehaviour(DirectObject):
     _instances = 0
     def __init__(self, camera, velocity=9, gravity=-2, mouse_sensitivity=0.2, initial_pos=(0, 0, 0), lockPitch = False, showbase=None):
@@ -373,7 +376,7 @@ class EnemyController():
 
 class Game(ShowBase):
     vfs = VirtualFileSystem.getGlobalPtr()
-    baseFolder = (f"{sys.argv[0]}").replace(r'\main.py', "")
+    baseFolder = (f"{sys.argv[0]}").replace(r'\mainWeb.py', "")
     inaMenu = True
     mouse_sensitivity = 0.015
     PlayerHull = 100
