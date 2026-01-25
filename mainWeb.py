@@ -85,7 +85,14 @@ The default values are set to 9 for velocity and 0.2 for mouse sensitivity, and 
 The default view is First Person. I will add a third person view later
 '''
 
-print(os.getcwd())
+def list_all(path):
+    with os.scandir(path) as entries:
+        for entry in entries:
+            print(entry.path)
+            if entry.is_dir():
+                list_all(entry.path)
+
+list_all(os.getcwd())
 
 class CameraControllerBehaviour(DirectObject):
     _instances = 0
