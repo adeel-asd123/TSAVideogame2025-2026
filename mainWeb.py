@@ -26,6 +26,7 @@ from direct.particles.ParticleEffect import ParticleEffect
 import direct.gui.DirectGuiGlobals as DGG
 from panda3d.ai import AIWorld, AICharacter
 from panda3d.core import (
+    VirtualFileSystem,
     Camera,
     PandaSystem,
     FrameBufferProperties, 
