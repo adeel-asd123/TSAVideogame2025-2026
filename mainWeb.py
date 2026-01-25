@@ -26,8 +26,7 @@ from direct.particles.ParticleEffect import ParticleEffect
 import direct.gui.DirectGuiGlobals as DGG
 from panda3d.ai import AIWorld, AICharacter
 from panda3d.core import (
-    VirtualFileSystem,
-    Camera,
+    getModelPath,
     PandaSystem,
     FrameBufferProperties, 
     WindowProperties,
@@ -79,6 +78,16 @@ from direct.gui.DirectGui import (
     DirectWaitBar
 )
 loadPrcFileData('', 'gl-version 4 1')
+
+vfs = VirtualFileSystem.getGlobalPtr()
+
+# Mount the assets folder as-is
+vfs.mount(Filename("/home/ec2-user/Game/assets"), 0)
+
+# Add to model search path
+getModelPath().appendDirectory(Filename("/home/ec2-user/Game/assets"))
+
+
 '''
 The camera controller is a class that handles the movement and rotation of the camera in the game.
 This is the core of the camera, and it is responsible for handling the input from the user and updating the camera accordingly.
