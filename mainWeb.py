@@ -1489,13 +1489,16 @@ class Game(ShowBase):
         def walk_vfs(path="/"):
             files = self.vfs.scanDirectory(Filename(path))
             if not files:
+                print('ig')
                 return
 
             for f in files:
+                print('here')
                 full_path = f.getFilename()
                 print(full_path)
 
                 if f.isDirectory():
+                    print('subfolder here')
                     walk_vfs(full_path)
 
         walk_vfs("/")
