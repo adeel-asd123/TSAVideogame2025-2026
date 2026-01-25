@@ -53,7 +53,7 @@ from panda3d.core import (
     CardMaker,
     SamplerState,
     VirtualFileSystem,
-    Filename,
+    getModelPath,
     DirectionalLight,
     AmbientLight,
     OrthographicLens,
@@ -599,6 +599,7 @@ class Game(ShowBase):
     def TutorialMenu(self):
         self.clickSound.play()
         self.paused = True
+        self.firstPlay = [True, 0]
         self.tutorialMainFrame = DirectFrame(frameColor=(0.6, 0.6, 0.6, 1),
                                         frameSize=(-1.25, 1.25, -0.9, 0.9),
                                         pos=(0, 0, 0)
@@ -628,12 +629,21 @@ class Game(ShowBase):
         self.card.setTexture(self.tutorialVideo)
         self.card.setPos(-0, 0, 0)
         self.card.reparentTo(self.tutorialMainFrame)
-        self.tutorialVideo.set_muted(False)
-        def PlayblackSliderMethod(self):
-            self.tutorialVideo.stop()
+        self.tutorialVideo.muted = False
+        self.tutorialVideo.volume = 1.0
+        def PlayblackSliderMethod(self):   
+            print('sliderMethod') 
+            if not self.firstPlay[0] and self.firstPlay[1] > 10:
+                print('stop')
+                self.tutorialVideo.stop()
+                self.paused = True
+            else:
+                print('first')
+                self.tutorialVideo.play()
+                self.firstPlay[0] = False
+                self.firstPlay[1] += 1 
             self.videoPauseButton['image'] = 'assets/images/pauseIcon.png'
             self.currentTime = self.videoPlaybackSlider['value']
-            self.paused = True
         def PausePlayMethod(self):
             if self.paused == True:
                 #When clicked from pause to play
@@ -642,12 +652,13 @@ class Game(ShowBase):
             else:
                 self.paused = True
                 self.videoPauseButton['image'] = 'assets/images/pauseIcon.png'
-            if self.tutorialVideo.is_playing:
-                self.currentTime = self.tutorialVideo.get_time()
+            if self.tutorialVideo.isPlaying:
+                print('pause button')
+                self.currentTime = self.tutorialVideo.getTime()
                 self.tutorialVideo.stop()
             else:
-                self.tutorialVideo.set_time(self.currentTime)
-                self.tutorialVideo.play()
+                self.tutorialVideo.setTime(self.currentTime)
+                self.tutorialVideo.restart()
         self.videoPlaybackSlider = DirectSlider(range=(0, self.tutorialVideo.getVideoLength()),
                                   value=0, 
                                   command=PlayblackSliderMethod, 
