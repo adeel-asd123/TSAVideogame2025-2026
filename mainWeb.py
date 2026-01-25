@@ -57,7 +57,7 @@ from panda3d.core import (
     Filename,
     DirectionalLight,
     AmbientLight,
-    Camera,
+    Multifile,
     OrthographicLens,
     Texture,
     TexturePool,
@@ -85,14 +85,13 @@ The default values are set to 9 for velocity and 0.2 for mouse sensitivity, and 
 The default view is First Person. I will add a third person view later
 '''
 
-def list_all(path):
-    with os.scandir(path) as entries:
-        for entry in entries:
-            print(entry.path)
-            if entry.is_dir():
-                list_all(entry.path)
+vfs = VirtualFileSystem.getGlobalPtr()
 
-list_all(os.getcwd())
+mf = Multifile()
+mf.openRead(Filename("Doomed2Europa.data"))
+
+# Mount at root (or change to "/assets" if you prefer)
+vfs.mount(mf, "/", VirtualFileSystem.MFReadOnly)
 
 class CameraControllerBehaviour(DirectObject):
     _instances = 0
