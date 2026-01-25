@@ -628,11 +628,9 @@ class Game(ShowBase):
         self.card.setTexture(self.tutorialVideo)
         self.card.setPos(-0, 0, 0)
         self.card.reparentTo(self.tutorialMainFrame)
-        self.tutorialAudio = self.loader.loadSfx(r"assets/audio/tutorial.avi")
-        self.tutorialVideo.synchronizeTo(self.tutorialAudio)
-
+        self.tutorialVideo.set_muted(False)
         def PlayblackSliderMethod(self):
-            self.tutorialAudio.stop()
+            self.tutorialVideo.stop()
             self.videoPauseButton['image'] = 'assets/images/pauseIcon.png'
             self.currentTime = self.videoPlaybackSlider['value']
             self.paused = True
@@ -644,13 +642,12 @@ class Game(ShowBase):
             else:
                 self.paused = True
                 self.videoPauseButton['image'] = 'assets/images/pauseIcon.png'
-            if self.tutorialAudio.status() == self.tutorialAudio.PLAYING:
-                self.currentTime = self.tutorialAudio.getTime()
-                self.tutorialAudio.stop()
+            if self.tutorialVideo.is_playing:
+                self.currentTime = self.tutorialVideo.get_time()
+                self.tutorialVideo.stop()
             else:
-                self.tutorialAudio.setTime(self.currentTime)
-                self.tutorialAudio.play()
-        
+                self.tutorialVideo.set_time(self.currentTime)
+                self.tutorialVideo.play()
         self.videoPlaybackSlider = DirectSlider(range=(0, self.tutorialVideo.getVideoLength()),
                                   value=0, 
                                   command=PlayblackSliderMethod, 
@@ -1486,22 +1483,6 @@ class Game(ShowBase):
     def __init__(self, Plot: 'Plot'):
         super().__init__()
 
-        def walk_vfs(path="/"):
-            files = self.vfs.scanDirectory(Filename(path))
-            if not files:
-                print('ig')
-                return
-
-            for f in files:
-                print('here')
-                full_path = f.getFilename()
-                print(full_path)
-
-                if f.isDirectory():
-                    print('subfolder here')
-                    walk_vfs(full_path)
-
-        walk_vfs("/")
         
         lens = self.cam.node().getLens()
         lens.setFocalLength(0.25)
