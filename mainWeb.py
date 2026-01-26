@@ -388,6 +388,12 @@ class Game(ShowBase):
 #            'space':"up",
 #            'e':"down"
             }
+    def repower(self, task):
+        if self.PowerValue < self.PowerCapacity:
+            self.PowerValue += .1
+            return task.cont
+        else:
+            return Task.done
     def enemies(self, fish, number, height, health):
         self.fishyController = EnemyController(Game=self)
         fishType = ({1:"small", 2:"big", 3:'biggest'}).get(fish)
@@ -1541,6 +1547,7 @@ class Game(ShowBase):
 #        self.messenger.toggleVerbose()
         self.accept('x', self.exportScene)
         self.accept('k', self.printPos)
+        self.accept('r', taskMgr.add('Repower', self.repower))
 
         self.Plot = Plot(self)
 
