@@ -1363,7 +1363,7 @@ class Game(ShowBase):
         self.thirdPersonTexture = Texture()
         self.thirdPersonBuffer.addRenderTexture(
             self.thirdPersonTexture,
-            GraphicsOutput.RTMCopyRam,   # or RTMBindOrCopy
+            GraphicsOutput.RTMBindOrCopy,   # or RTMCopyRam
             GraphicsOutput.RTPColor
         )
         # Start the update cycle
