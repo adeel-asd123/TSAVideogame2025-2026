@@ -1547,7 +1547,9 @@ class Game(ShowBase):
 #        self.messenger.toggleVerbose()
         self.accept('x', self.exportScene)
         self.accept('k', self.printPos)
-        self.accept('r', taskMgr.add('Repower', self.repower))
+        def repower():
+            taskMgr.add('Repower', self.repower)
+        self.accept('r', repower)
 
         self.Plot = Plot(self)
 
