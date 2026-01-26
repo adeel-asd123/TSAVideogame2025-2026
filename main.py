@@ -1074,7 +1074,7 @@ class Game(ShowBase):
             self.Plot.FundsBar.destroy()
     def MainMenu(self):
         self.inaMenu = True
-        self.mainMenuBackground = OnscreenImage(image='assets/images/mainMenuBackground.png', pos=(0, 0, 0), scale=(1.5, 1.5, 1.5))
+        self.mainMenuBackground = OnscreenImage(image='assets/images/mainMenuBackground.png', pos=(0, 0, 0), scale=(2.75,1,1))
         self.titleText = OnscreenText(text="Doomed to Europa", pos=(0, .4), scale=0.25, fg=(1, 1, 1, 1), align=TextNode.ACenter)
         self.titleText.setFont(self.Font)
         self.btnPlay = DirectButton(
@@ -1521,7 +1521,7 @@ class Game(ShowBase):
         
         #  Tell Panda3d to listen for mouse clicks
         self.accept('mouse1', self.MouseIn)
-        self.Font = self.loader.loadFont('assets/fonts/propaganda.ttf')
+        self.Font = self.loader.loadFont('assets/fonts/Metal-Lord.ttf')
         self.Font.setPixelsPerUnit(120)
         self.transmissionFont = self.loader.loadFont('assets/fonts/Hacked_CRT.ttf')
 
