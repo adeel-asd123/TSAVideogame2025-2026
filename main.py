@@ -43,6 +43,8 @@ from panda3d.core import (
     CollisionNode, 
     CollisionHandlerPusher,  
     CollisionBox,
+    CollisionPlane,
+    Plane,
     LVector3, 
     CollisionRay, 
     BitMask32, 
@@ -250,7 +252,7 @@ class EnemyController():
         self._gravity = LVector3(0, 0, -2)
         self.EnemyCount = 0
         self.waveCount = 1
-        self.Font = self.showbase.loader.loadFont('assets/fonts/propaganda.ttf')
+        self.Font = self.showbase.loader.loadFont('assets/fonts/Metal-Lord.ttf')
     async def setup(self, modelpath, extraAnims, num, height, health, waves= 5, changePerWave=1):
         self.waveMethod = AsyncFuture()
         self.num = num
@@ -395,7 +397,8 @@ class Game(ShowBase):
             self.PowerValue += .1
             return task.cont
         else:
-            return Task.done
+            print('no more need power')
+            return task.done
     def enemies(self, fish, number, height, health):
         self.fishyController = EnemyController(Game=self)
         fishType = ({1:"small", 2:"big", 3:'biggest'}).get(fish)
@@ -486,7 +489,7 @@ class Game(ShowBase):
             self.clickSound.play()
             taskMgr.remove('Update')
             self.SaveProgress(reset=True)
-            self.HealthBar.destroy()
+            self.HullBar.destroy()
             self.playButtonMethod = AsyncFuture()
             self.MainMenu()
             self.cam_controller = CameraControllerBehaviour(self.camera, velocity=3, mouse_sensitivity=self.mouse_sensitivity)
@@ -499,7 +502,7 @@ class Game(ShowBase):
                     child.cleanup()
                 else:    
                     child.removeNode()
-            taskMgr.add(self.loadScene())
+            taskMgr.add(self.readyScene())
         self.deathFrame = DirectFrame(frameColor=(0, 0, 0, 1), 
                                       frameSize=(-1.4, 1.4, -1, 1), 
                                       pos=(0, 0, 0), 
@@ -601,7 +604,7 @@ class Game(ShowBase):
             self.cam_controller.disable()  
             props = WindowProperties()
             props.setCursorHidden(False)
-            self._showbase.win.requestProperties(props) 
+            self.win.requestProperties(props) 
             self.inaMenu = True
         # Using our boolean we pass an if statement to effectively switch when oue mouse focuses on clicks
     def TutorialMenu(self):
@@ -683,6 +686,22 @@ class Game(ShowBase):
                                              extraArgs=[self]
                                              )
         self.videoPauseButton.setTransparency(TransparencyAttrib.MAlpha)
+        def close_menu():
+            self.tutorialMainFrame.destroy()
+        self.btnExit = DirectButton(
+            frameColor=(0.4, 0.4, 0.4, 1),
+            frameSize=(-0.09, 0.09, -0.07, 0.14),
+            pos=LPoint3f(-0.5, 0, 0.75),
+            hpr=LVecBase3f(0, 0, 0),
+            relief=None,
+            scale=LVecBase3f(1, 1, 1),
+            image= 'assets/images/exitIcon.png',
+            image_scale = (.07, .07, .07),
+            image_pos = (0, 0, .03),
+            image_hpr = (0, 0, 0),
+            command=close_menu,
+        )
+        self.btnExit.setTransparency(TransparencyAttrib.MAlpha)
     def OptionMenu(self):
         self.clickSound.play()
         self.mouseSettingsOpen = False
@@ -1138,7 +1157,7 @@ class Game(ShowBase):
             self.cam_controller = CameraControllerBehaviour(self.camera, velocity=3, mouse_sensitivity=self.mouse_sensitivity)
             self.cam_controller.setup(keys=self.keys)
             self.cam_controller.disable()
-            self.HealthBar.destroy()
+            self.Hullbar.destroy()
             self.playButtonMethod = AsyncFuture()
             self.MainMenu()
             children_to_remove = [child for child in self.render.getChildren() if child != self.camera]
@@ -1197,7 +1216,7 @@ class Game(ShowBase):
             command=Resume,
             extraArgs=[self],
         )
-#This function is called when the mouse is clicked, calling a function based on what is clicked in game    
+#This function wis called when the mouse is clicked, calling a function based on what is clicked in game    
     def shader(self, nodes = None, EnterNode = None):
         self.currentModels = []
         if not hasattr(self, 'Shader_setup'):
@@ -1271,7 +1290,8 @@ class Game(ShowBase):
 
         # Load the models in the background, each time suspending this
         # method until they are done
-        self.worldCollisionModel = await self.loader.loadModel("assets/models/worldTriangles.bam", blocking=False)
+        self.worldCollisionModel = await self.loader.loadModel("assets/models/worldVisible.bam", blocking=False)
+        print('done')
         self.worldVisibleModel = await self.loader.loadModel("assets/models/worldVisible.bam", blocking=False)
 
         # Create a background for the world
@@ -1305,10 +1325,10 @@ class Game(ShowBase):
         self.world_bg.set_shader(self.bgShader) 
         
         # Create a collision node for the world
-        self.world_collision_node = self.worldCollisionModel.find("**/+CollisionNode")
+#        self.world_collision_node = self.worldCollisionModel.find("**/+CollisionNode")
         self.worldCollisionModel.hide()
-        self.cTrav.addCollider(self.world_collision_node, self.pusher)
-        self.pusher.addCollider(self.world_collision_node, self.worldCollisionModel)
+#        self.cTrav.addCollider(self.world_collision_node, self.pusher)
+#        self.pusher.addCollider(self.world_collision_node, self.worldCollisionModel)
 
         # Set up Lighting SystemF
         self.sunLight = DirectionalLight('directionalLight')
@@ -1421,7 +1441,7 @@ class Game(ShowBase):
             self.PlayerHull = min(self.PlayerHull, self.MaxHull)
             self.HullBar['value'] = self.PlayerHull
 
-        if self.PlayerHull < 0 and not hasattr(self, '_player_died'):
+        if self.PlayerHull < 0 and not hasattr(self, '_player_died') or self.PowerValue <= 0 and not hasattr(self, '_player_died'):
             self._player_died = None
             self.Death()
         
@@ -1538,7 +1558,9 @@ class Game(ShowBase):
 #        self.messenger.toggleVerbose()
         self.accept('x', self.exportScene)
         self.accept('k', self.printPos)
-        self.accept('r', taskMgr.add('Repower', self.repower))
+        def repowerBattery():
+            taskMgr.add(self.repower)
+        self.accept('r', repowerBattery)
 
         self.Plot = Plot(self)
 
@@ -1700,10 +1722,10 @@ class Plot():
                 parent=self.tutorialFrame,
                 pos=(-1, 0.15),
                 scale=0.03,
-                font=self.gameInstance.transmissionFont,
+                font=self.gameInstance.Font,
                 align=TextNode.ALeft,
                 fg=(1, 0, 1, 1),
-                text="Click W to move forward\nClick A to move left\nClick S to move backward\nClick D to move right\nUse the mouse to look around\nLeft Click the satelite signals (the red particles) samples",
+                text="Click W to move forward\nClick A to move left\nClick S to move backward\nClick D to move right\nUse the mouse to look around\nLeft Click the satelite signals (the red particles) samples\nPress R to recharge your battery, or you might be stranded",
             )
 
             await Task.pause(15)
@@ -1860,7 +1882,7 @@ class Plot():
             await Task.pause(10)
             self.gameInstance.textTypewriteAnimation(parent=self.gameInstance.transponderFrame, textPos=(-1.45, .1, .5), text=f"We located a mantle peak \nFrom there, we'll start drilling \nGood luck operator, we're counting on you!", scale=(0.04, 0.0275))
             await Task.pause(10)
-            self.gameInstance.textTypewriteAnimation(parent=self.gameInstance.transponderFrame, textPos=(-1.45, .1, .5), text=f"Use the arrow to guide you to the mantle peak \nWatch out for hostile pisces \nThey don't take kindly to intruders", scale=(0.04, 0.0275))
+            self.gameInstance.textTypewriteAnimation(parent=self.gameInstance.transponderFrame, textPos=(-1.45, .1, .5), text=f"Use the arrow to guide you to the mantle peak \nWatch out for hostile pisces \nThey don't take kindly to intruders\nStun any and ALL of them, we can't have any near the drill site", scale=(0.04, 0.0275))
             
             self.tutorialFrame = DirectFrame(frameColor=(.2, .2, .2, 1),
                                         frameSize=(-1.1, 1.1, -.25, .25), 
@@ -1873,29 +1895,33 @@ class Plot():
                 parent=self.tutorialFrame,
                 pos=(-1, 0.15),
                 scale=0.03,
-                font=self.gameInstance.transmissionFont,
+                font=self.gameInstance.Font,
                 align=TextNode.ALeft,
                 fg=(1, 0, 1, 1),
-                text="Click your left mouse button to stun the fish\nAvoid enemy fish to prevent damage\nReach the mantle peak indicated by the arrow \nCarefull, some fish take more stuns than others",
+                text="Click your left mouse button to stun the fish\nAvoid enemy fish to prevent damage\nReach the mantle peak indicated by the arrow \nCareful, some fish take more stuns than others",
             )
             
             await Task.pause(7)
             self.tutorialFrame.destroy()
 
-            self.pointingArrow = self.gameInstance.loader.loadModel("assets/models/arrow.bam")
-            self.mountainPeakModel = self.gameInstance.loader.loadModel("assets/models/mountainPeak.bam")
-            self.mountainPeakModel.setPos(165, -208, -1150)
-            self.mountainPeakModel.setScale(10)
-            self.mountainPeakModel.reparentTo(self.gameInstance.render)
-            self.pointingArrow.reparentTo(self.gameInstance.render)
-            def distanceCalculator(task):
-                self.gameInstance.camera.getPos(self.gameInstance.render)
-                self.mountainPeakPosition = LPoint3f(163, -149, -1000)
-                scaleFactor = max(0.0, min(1.0, ((self.gameInstance.camera.getPos(self.gameInstance.render) - self.mountainPeakPosition).length() - 0) / (700 - 0)))
-                self.pointingArrow.setScale(0.5 * scaleFactor)
-                return Task.cont
-            taskMgr.add(distanceCalculator, "distanceCalculator")
-            self.gameInstance.enemies(1, 1, (-25, 0), 1)
+        self.pointingArrow = self.gameInstance.loader.loadModel("assets/models/arrow.bam")
+        self.mountainPeakModel = self.gameInstance.loader.loadModel("assets/models/mountainPeak.bam")
+        self.mountainPeakModel.setPos(165, -208, -1150)
+        self.mountainPeakModel.setScale(10)
+        self.mountainPeakModel.reparentTo(self.gameInstance.render)
+        self.pointingArrow.reparentTo(self.gameInstance.render)
+        def distanceCalculator(task):
+            self.gameInstance.camera.getPos(self.gameInstance.render)
+            self.mountainPeakPosition = LPoint3f(163, -149, -1000)
+            scaleFactor = max(0.0, min(1.0, ((self.gameInstance.camera.getPos(self.gameInstance.render) - self.mountainPeakPosition).length() - 0) / (700 - 0)))
+            self.pointingArrow.setScale(0.5 * scaleFactor)
+            if (self.gameInstance.camera.getPos() - self.mountainPeakPosition).length() < 50:
+                self.reachedPeak = None
+                print('peak')
+                return Task.done
+            return Task.cont
+        taskMgr.add(distanceCalculator, "distanceCalculator")
+        """    self.gameInstance.enemies(1, 1, (-25, 0), 1)
             await self.plotAsync
             self.eventAdvanceFunc['reset']()
             self.eventDoneFunc['finish']()
@@ -1907,8 +1933,41 @@ class Plot():
             await self.plotAsync
             self.eventAdvanceFunc['reset']()
             self.eventDoneFunc['finish']()
-            self.pointingArrow.removeNode()
-            self.mountainPeakModel.removeNode()
+            self.plotChecks[2] = lambda: False
+            """
+        self.plotChecks[3] = lambda: hasattr(self, 'reachedPeak')
+        await self.plotAsync
+        self.eventAdvanceFunc['reset']()
+        self.eventDoneFunc['finish']()
+        self.pointingArrow.removeNode()
+        delattr(self, 'pointingArrow')
+        self.mountainPeakModel.removeNode()
+        self.drillInteriorModel = self.gameInstance.loader.loadModel("assets/models/Drill_interior_model.bam")
+        self.drillInteriorModel.reparentTo(self.gameInstance.render)
+        self.drillInteriorModel.setPos(0,0,0)
+        self.drillInteriorModel.setScale(20,20,20)
+        self.gameInstance.camera.setPos(0,0,10)
+        self.plane_collision_node = CollisionNode('plane')
+        self.plane_collision_node.addSolid(CollisionPlane(Plane(Vec3(100, 100, 100), LPoint3f(0, 0, 0))))
+        self.plane_collision_node_path = self.gameInstance.render.attachNewNode(self.plane_collision_node)
+        self.gameInstance.cTrav.addCollider(self.plane_collision_node_path, self.gameInstance.pusher) 
+        self.gameInstance.pusher.addCollider(self.plane_collision_node_path, self.drillInteriorModel)
+        self.FIXED = False
+        def fixer():
+            self.FIXED = True
+        self.gameInstance.accept('f', fixer)
+        self.fixIndicator = self.gameInstance.loader.loadModel('assets/models/exclamation.bam')
+        self.fixIndicator.reparentTo(self.gameInstance.render)
+        self.fixIndicator.hide()
+        for i in range(0, 20):
+            await Task.pause(random.randint(1, 5))
+            self.fixIndicator.show()
+            await Task.pause(random.randint(1, 5) * .2)
+            if self.FIXED:
+                self.FIXED = False
+                self.fixIndicator.hide()
+            else:
+                self.gameInstance.Death()
         self.gameInstance.CameraOperator()
         self.LeviathonModel = Actor("assets/models/Leviathon.glb", {'attack': 'assets/models/Leviathon-attack.glb'})
         self.LeviathonModel.setScale(10)
@@ -2076,7 +2135,8 @@ class Plot():
             # Check 0: research goal achieved — only true when gameInstance has hit_name and researchCollisionNode exists and names match
             lambda: hasattr(self.gameInstance, 'hit_name') and hasattr(self, 'researchCollisionNode') and (self.researchCollisionNode.getName() == self.gameInstance.hit_name),
             lambda: hasattr(self, 'closedUpgradeMenu'),  # Check 1: Closed Upgrade Menu — only true when the upgrade menu is closed
-            lambda: hasattr(self.gameInstance, "levelDone")
+            lambda: hasattr(self.gameInstance, "levelDone"),
+            lambda: False
         ]
         self.eventCounter = len(self.plotChecks)
         self.plotEvents = {"researchGoalAchieved": self.plotChecks[0]}
