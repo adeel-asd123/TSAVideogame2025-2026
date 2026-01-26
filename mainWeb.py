@@ -393,7 +393,7 @@ class Game(ShowBase):
             self.PowerValue += .1
             return task.cont
         else:
-            return Task.done
+            return task.done
     def enemies(self, fish, number, height, health):
         self.fishyController = EnemyController(Game=self)
         fishType = ({1:"small", 2:"big", 3:'biggest'}).get(fish)
@@ -1708,7 +1708,7 @@ class Plot():
                 font=self.gameInstance.transmissionFont,
                 align=TextNode.ALeft,
                 fg=(1, 0, 1, 1),
-                text="Click W to move forward\nClick A to move left\nClick S to move backward\nClick D to move right\nUse the mouse to look around\nLeft Click the satelite signals (the red particles) samples",
+                text="Click W to move forward\nClick A to move left\nClick S to move backward\nClick D to move right\nUse the mouse to look around\nLeft Click the satelite signals (the red particles) samples\nPress R to recharge your battery, or you might be stranded",
             )
 
             await Task.pause(15)
