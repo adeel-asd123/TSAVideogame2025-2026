@@ -393,12 +393,15 @@ class Game(ShowBase):
 #            'e':"down"
             }
     def repower(self, task):
-        if self.PowerValue < self.PowerCapacity:
+        if round(self.PowerValue) < self.PowerCapacity:
             self.PowerValue += .1
-            return task.cont
-        else:
+            print(self.PowerValue)
+            print(self.PowerCapacity)
+            return Task.cont
+        if self.PowerValue >= self.PowerCapacity:
             print('no more need power')
-            return task.done
+            taskMgr.remove('repower')
+            return Task.done
     def enemies(self, fish, number, height, health):
         self.fishyController = EnemyController(Game=self)
         fishType = ({1:"small", 2:"big", 3:'biggest'}).get(fish)
@@ -413,7 +416,9 @@ class Game(ShowBase):
         async def typewrite():
             for char in textSplit:
                 textNode.setText(textNode.getText() + char)
-                await Task.pause(interval)
+                await Task.pause(interval*.5)
+                self.transmissionSound.play()
+                await Task.pause(interval*.5)
             await Task.pause(1)
             return Task.done
         taskMgr.add(typewrite(), 'typewriteTask', uponDeath=cleanup)
@@ -1448,6 +1453,22 @@ class Game(ShowBase):
         if hasattr(self, 'fishyController'):
             self.fishyController.MainUpdate()
 
+        try:
+            moving = False
+            if hasattr(self, 'cam_controller') and hasattr(self.cam_controller, '_input_state'):
+                ist = self.cam_controller._input_state
+                moving = any(ist.isSet(n) for n in ('forward', 'backward', 'left', 'right', 'up', 'down'))
+            if moving and not self._moving_sound_playing:
+                if self.roverSound:
+                    self.roverSound.play()
+                self._moving_sound_playing = True
+            elif (not moving) and self._moving_sound_playing:
+                if self.roverSound:
+                    self.roverSound.stop()
+                self._moving_sound_playing = False
+        except Exception:
+            pass
+
         if not hasattr(self, "stopPowerBarUpdate") and hasattr(self, 'PowerBar'):
             self.PowerValue = min(self.PowerValue, self.PowerCapacity)
             self.PowerValue -= globalClock.getDt() * .75            
@@ -1512,6 +1533,11 @@ class Game(ShowBase):
     def __init__(self, Plot: 'Plot'):
         super().__init__()
         
+        props = WindowProperties()
+        props.setSize(1800, 670)
+
+        self.win.requestProperties(props)
+
         lens = self.cam.node().getLens()
         lens.setFocalLength(0.25)
 
@@ -1552,6 +1578,13 @@ class Game(ShowBase):
         self.transmissionFont = self.loader.loadFont('assets/fonts/Hacked_CRT.ttf')
 
         self.clickSound = self.loader.loadSfx('assets/audio/click.ogg')
+        self.transmissionSound = self.loader.loadSfx('assets/audio/transmissionSound.ogg')
+        self.collectSound = self.loader.loadSfx('assets/audio/collectSound.ogg')
+        self.explosionSound = self.loader.loadSfx('assets/audio/explosion.ogg')
+        self.roverSound = self.loader.loadSfx('assets/audio/rover.ogg')
+        if self.roverSound:
+            self.roverSound.setLoop(True)
+        self._moving_sound_playing = False
 
         self.enableParticles()
 
@@ -1559,7 +1592,7 @@ class Game(ShowBase):
         self.accept('x', self.exportScene)
         self.accept('k', self.printPos)
         def repowerBattery():
-            taskMgr.add(self.repower)
+            taskMgr.add(self.repower, 'repower')
         self.accept('r', repowerBattery)
 
         self.Plot = Plot(self)
@@ -1638,6 +1671,7 @@ class Plot():
             await Task.pause(3)
             roverPosInterval2.start()
             await Task.pause(.24)
+            self.gameInstance.explosionSound.play()
 
         # Cleanup after the animation
             taskMgr.remove("LookatRover")
@@ -1721,11 +1755,11 @@ class Plot():
             self.tutorialText = OnscreenText(
                 parent=self.tutorialFrame,
                 pos=(-1, 0.15),
-                scale=0.03,
+                scale=0.06,
                 font=self.gameInstance.Font,
                 align=TextNode.ALeft,
                 fg=(1, 0, 1, 1),
-                text="Click W to move forward\nClick A to move left\nClick S to move backward\nClick D to move right\nUse the mouse to look around\nLeft Click the satelite signals (the red particles) samples\nPress R to recharge your battery, or you might be stranded",
+                text="Click W to move forward      Click A to move left\nClick S to move backward      Click D to move right\nUse the mouse to look around\nLeft Click the satelite signals (the red particles) samples\nPress R to recharge your battery, or you might be stranded",
             )
 
             await Task.pause(15)
@@ -1734,6 +1768,7 @@ class Plot():
             await self.plotAsync
             self.gameInstance.hit_name = ''
             print("Sample 1 Collected")
+            self.gameInstance.collectSound.play()
         
         # Second Sample
             self.gameInstance.textTypewriteAnimation(parent=self.gameInstance.transponderFrame, textPos=(-1.45, .1, .5), text="Amazing! We have analyzed the sample and... Wow! \nWe are detecting high amounts of CH4 (Methane) \nBut it's not enough \nWe've pinged another signature, go ahead and collect a sample!", scale=(0.04, 0.0275))
@@ -1743,6 +1778,7 @@ class Plot():
             await self.plotAsync
             self.gameInstance.hit_name = ''
             print("Sample 2 Collected")
+            self.gameInstance.collectSound.play()
 
         # Third Sample
             self.gameInstance.textTypewriteAnimation(parent=self.gameInstance.transponderFrame, textPos=(-1.45, .1, .5), text="This is astonishing! \nWe've detected high amounts of Complex Carbons! \nWe need one more sign though... Liquid water", scale=(0.04, 0.0275))
@@ -1752,6 +1788,7 @@ class Plot():
             await self.plotAsync
             self.gameInstance.hit_name = ''
             print("Sample 3 Collected")
+            self.gameInstance.collectSound.play()
 
         # Instructions for the main gameplay loop for the first part of the game
             self.gameInstance.textTypewriteAnimation(parent=self.gameInstance.transponderFrame, textPos=(-1.45, .1, .5), text="Perfect! Liquid water detected! \nWe got a $500 million grant for our operations \nWe're gonna burn through it quick; We need to keep making discoveries \nNow that we see signs of life... WE NEED TO FIND LIFE", scale=(0.04, 0.0275))
@@ -1785,6 +1822,7 @@ class Plot():
                 print(f"Sample {i+1} Collected")
                 self.Funds += 10_000_000
                 self.gameInstance.textTypewriteAnimation(parent=self.gameInstance.transponderFrame, textPos=(-1.45, .1, .5), text=f"Sample {i+1} collected! Keep going operator!", scale=(0.04, 0.0275))
+                self.gameInstance.collectSound.play()
                 self.researchNode.setPos(self.pointLocations[i])
                 self.eventAdvanceFunc['reset']()
                 self.eventDoneFunc['finish']()
